@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from typing import Any
 
+from .spans import validate_role_spans
+
 
 def _article_title(text: str) -> str | None:
     stripped = text.strip()
@@ -98,3 +100,65 @@ def describe_neutral_protocol(probes: Iterable[Mapping[str, Any]]) -> dict[str, 
             {row.get("article") for row in metadata if row.get("article") is not None}
         ),
     }
+
+
+def validate_probe_record(probe: Mapping[str, Any], *, n_tokens: int) -> None:
+    """Validate stored lengths and the role geometry used by GPU analyses."""
+
+    key = probe.get("key", "<unknown>")
+    if probe.get("n_tok") != n_tokens:
+        raise ValueError(
+            f"{key}: stored n_tok={probe.get('n_tok')!r}, tokenizer produced {n_tokens}"
+        )
+    prompt_len = probe.get("prompt_len")
+    if not isinstance(prompt_len, int) or not 0 <= prompt_len <= n_tokens:
+        raise ValueError(f"{key}: prompt_len must lie in [0, {n_tokens}]")
+    spans = probe.get("role_spans")
+    if not isinstance(spans, dict):
+        raise ValueError(f"{key}: role_spans must be an object")
+    validate_role_spans(spans, n_tokens=n_tokens)
+
+    expected_context = [[0, prompt_len]] if prompt_len else None
+    expected_response = [[prompt_len, n_tokens]] if prompt_len < n_tokens else None
+    for role, expected in (
+        ("input_context", expected_context),
+        ("model_response", expected_response),
+    ):
+        if spans.get(role) != expected:
+            raise ValueError(f"{key}: {role}={spans.get(role)!r}, need {expected!r}")
+
+    aliases = {
+        "math": ("math_problem", "math_solution"),
+        "code": ("code_specification", "code_solution"),
+        "neutral": ("neutral_context", "neutral_text"),
+    }
+    kind = probe.get("kind")
+    if kind in aliases:
+        context_role, response_role = aliases[kind]
+        if spans.get(context_role) != expected_context:
+            raise ValueError(f"{key}: {context_role} does not match input_context")
+        if spans.get(response_role) != expected_response:
+            raise ValueError(f"{key}: {response_role} does not match model_response")
+
+    if kind != "agent" or expected_response is None:
+        return
+    typed_roles = ("assistant_deliberation", "tool_call", "completion_signal")
+    typed_spans = [
+        span
+        for role in typed_roles
+        for span in spans.get(role, [])
+    ]
+    if not typed_spans:
+        raise ValueError(f"{key}: agent response has no typed role spans")
+    typed_spans.sort()
+    if typed_spans[0][0] != prompt_len or typed_spans[-1][1] != n_tokens:
+        raise ValueError(f"{key}: typed agent roles do not cover the response")
+    if any(
+        left[1] != right[0]
+        for left, right in zip(typed_spans, typed_spans[1:], strict=False)
+    ):
+        raise ValueError(f"{key}: typed agent response roles overlap or leave a gap")
+
+    for observation in spans.get("tool_observation", []):
+        if observation[1] > prompt_len:
+            raise ValueError(f"{key}: tool_observation extends into the response")

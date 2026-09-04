@@ -47,7 +47,10 @@ from latent_vocabulary_tracing.metrics import (  # noqa: E402
     deterministic_balanced_split,
     one_sided_sign_test,
 )
-from latent_vocabulary_tracing.probes import describe_neutral_protocol  # noqa: E402
+from latent_vocabulary_tracing.probes import (  # noqa: E402
+    describe_neutral_protocol,
+    validate_probe_record,
+)
 from latent_vocabulary_tracing.provenance import model_config_hash  # noqa: E402
 from latent_vocabulary_tracing.registry import load_edge_registry  # noqa: E402
 from latent_vocabulary_tracing.taxonomy import (  # noqa: E402
@@ -257,7 +260,13 @@ all_probes = [json.loads(line) for line in open(args.probes)]
 probe_protocol = describe_neutral_protocol(all_probes)
 probe_ids = set()
 for probe in all_probes:
-    probe_ids.update(tok(probe["text"], truncation=True, max_length=args.max_len).input_ids)
+    input_ids = tok(
+        probe["text"],
+        truncation=True,
+        max_length=args.max_len,
+    ).input_ids
+    validate_probe_record(probe, n_tokens=len(input_ids))
+    probe_ids.update(input_ids)
 piece_mismatches = []
 for token_id in sorted(probe_ids):
     piece_a = tok.convert_ids_to_tokens(token_id)

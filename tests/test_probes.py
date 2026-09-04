@@ -3,6 +3,7 @@ import pytest
 from latent_vocabulary_tracing.probes import (
     describe_neutral_protocol,
     select_spaced_text_records,
+    validate_probe_record,
 )
 
 
@@ -64,3 +65,41 @@ def test_neutral_protocol_reports_document_diversity_and_mixed_fields():
 
     probes[1]["meta"]["source_context_tokens"] = 64
     assert describe_neutral_protocol(probes)["neutral_source_context_tokens"] is None
+
+
+def test_probe_record_requires_exact_aliases_and_agent_partition():
+    neutral = {
+        "key": "n",
+        "kind": "neutral",
+        "prompt_len": 2,
+        "n_tok": 5,
+        "role_spans": {
+            "input_context": [[0, 2]],
+            "model_response": [[2, 5]],
+            "neutral_context": [[0, 2]],
+            "neutral_text": [[2, 5]],
+        },
+    }
+    validate_probe_record(neutral, n_tokens=5)
+    neutral["role_spans"]["neutral_text"] = [[1, 5]]
+    with pytest.raises(ValueError, match="neutral_text"):
+        validate_probe_record(neutral, n_tokens=5)
+
+    agent = {
+        "key": "a",
+        "kind": "agent",
+        "prompt_len": 2,
+        "n_tok": 8,
+        "role_spans": {
+            "input_context": [[0, 2]],
+            "model_response": [[2, 8]],
+            "tool_observation": [[0, 2]],
+            "assistant_deliberation": [[2, 4]],
+            "tool_call": [[4, 7]],
+            "completion_signal": [[7, 8]],
+        },
+    }
+    validate_probe_record(agent, n_tokens=8)
+    agent["role_spans"]["tool_call"] = [[3, 7]]
+    with pytest.raises(ValueError, match="overlap or leave a gap"):
+        validate_probe_record(agent, n_tokens=8)
