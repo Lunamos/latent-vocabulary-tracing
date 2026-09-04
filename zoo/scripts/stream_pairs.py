@@ -9,6 +9,7 @@ provenance never degrades into a machine-local cache path.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -18,16 +19,15 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-os.environ.setdefault("HF_HOME", "/localscratch/zjin350/hf_cache")
-
-from huggingface_hub import snapshot_download  # noqa: E402, I001
-
+from huggingface_hub import constants as huggingface_constants
+from huggingface_hub import snapshot_download
 
 ZOO = Path(os.environ.get("ZOO", Path(__file__).resolve().parents[1])).resolve()
 ROOT = ZOO.parent
 LOG = ZOO / "logs"
 RESULTS = ZOO / "results"
-HF_HUB = Path(os.environ["HF_HOME"]) / "hub"
+RUNTIME_MODELS = ZOO / ".runtime_models"
+HF_HUB = Path(huggingface_constants.HF_HUB_CACHE)
 PYTHON = os.environ.get("ZOO_PY", sys.executable)
 ALLOW = ("*.safetensors", "*.json", "*.txt", "*.jinja", "*.model", "*.py", "*.tiktoken")
 
@@ -50,6 +50,8 @@ class ModelSpec:
 @dataclass(frozen=True)
 class FetchedModel:
     path: Path
+    source_path: Path
+    overlay_path: Path | None
     spec: ModelSpec
 
 
@@ -76,9 +78,7 @@ def parse_args() -> argparse.Namespace:
     )
     args = parser.parse_args()
     if (
-        args.require_categories
-        or args.require_fp32_store
-        or args.expected_probes_per_domain
+        args.require_categories or args.require_fp32_store or args.expected_probes_per_domain
     ) and not args.contract_readout:
         parser.error("contract requirements need --contract-readout")
     if args.expected_probes_per_domain is not None and args.expected_probes_per_domain <= 0:
@@ -92,10 +92,7 @@ def parse_args() -> argparse.Namespace:
 
 def log(message: str) -> None:
     LOG.mkdir(parents=True, exist_ok=True)
-    line = (
-        f"{time.strftime('%F %T')} "
-        f"[gpu{os.environ.get('CUDA_VISIBLE_DEVICES', '?')}] {message}"
-    )
+    line = f"{time.strftime('%F %T')} [gpu{os.environ.get('CUDA_VISIBLE_DEVICES', '?')}] {message}"
     print(line, flush=True)
     with (LOG / "stream_pairs.log").open("a", encoding="utf-8") as handle:
         handle.write(line + "\n")
@@ -148,16 +145,22 @@ def wait_for_disk(minimum_gib: float, poll_seconds: int) -> None:
         time.sleep(max(poll_seconds, 60))
 
 
-def sanitize_config(path: Path) -> None:
-    """Repair released configs that encode integral architecture fields as floats."""
+def sanitized_config_view(path: Path) -> tuple[Path, Path | None]:
+    """Return a non-mutating model view with integral config fields repaired.
+
+    Hugging Face snapshots normally contain symlinks into a content-addressed
+    blob store. Writing through ``snapshot/config.json`` therefore corrupts the
+    shared cache. If a repair is needed, construct a small ignored overlay with
+    a real config file and symlinks to every other snapshot entry.
+    """
 
     config_path = path / "config.json"
     if not config_path.is_file():
-        return
+        return path, None
     try:
         config = json.loads(config_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return
+        return path, None
     changed = False
 
     def fix(value: object) -> None:
@@ -191,15 +194,68 @@ def sanitize_config(path: Path) -> None:
                 fix(item)
 
     fix(config)
-    if changed:
-        config_path.chmod(0o644)
-        config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
-        log(f"sanitized integral floats in {config_path}")
+    if not changed:
+        return path, None
+
+    normalized = json.dumps(config, indent=2) + "\n"
+    if path.is_relative_to(RUNTIME_MODELS):
+        temporary = path / f"config.json.tmp.{os.getpid()}"
+        temporary.write_text(normalized, encoding="utf-8")
+        os.replace(temporary, path / "config.json")
+        log(f"sanitized integral floats in private model overlay {path}")
+        return path, path
+
+    digest = hashlib.sha256((str(path.resolve()) + "\0" + normalized).encode()).hexdigest()[:16]
+    overlay = RUNTIME_MODELS / digest
+    overlay.mkdir(parents=True, exist_ok=True)
+    for source in path.iterdir():
+        if source.name == "config.json":
+            continue
+        destination = overlay / source.name
+        if not destination.exists() and not destination.is_symlink():
+            destination.symlink_to(source.resolve(), target_is_directory=source.is_dir())
+    temporary = overlay / f"config.json.tmp.{os.getpid()}"
+    temporary.write_text(normalized, encoding="utf-8")
+    os.replace(temporary, overlay / "config.json")
+    log(f"using non-mutating sanitized config overlay {overlay}")
+    return overlay, overlay
+
+
+def subdirectory_model_view(snapshot: Path, subdirectory: str) -> tuple[Path, Path | None]:
+    """Supply root configuration to a checkpoint subdirectory without cache writes."""
+
+    source_path = snapshot / subdirectory
+    if not source_path.is_dir():
+        raise FileNotFoundError(f"checkpoint subdirectory not found: {source_path}")
+    if (source_path / "config.json").is_file():
+        return source_path, None
+
+    digest = hashlib.sha256(f"{snapshot.resolve()}\0{subdirectory}".encode()).hexdigest()[:16]
+    overlay = RUNTIME_MODELS / f"subdir-{digest}"
+    overlay.mkdir(parents=True, exist_ok=True)
+    for source in source_path.iterdir():
+        destination = overlay / source.name
+        if not destination.exists() and not destination.is_symlink():
+            destination.symlink_to(source.resolve(), target_is_directory=source.is_dir())
+    for pattern in ("*.json", "*.txt", "*.jinja"):
+        for source in snapshot.glob(pattern):
+            destination = overlay / source.name
+            if destination.exists() or destination.is_symlink():
+                continue
+            if source.name == "config.json":
+                destination.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            else:
+                destination.symlink_to(source.resolve())
+    if not (overlay / "config.json").is_file():
+        raise FileNotFoundError(f"no root config available for checkpoint {source_path}")
+    log(f"using non-mutating checkpoint-subdirectory overlay {overlay}")
+    return overlay, overlay
 
 
 def fetch(spec: ModelSpec, minimum_disk_gib: float, poll_seconds: int) -> FetchedModel | None:
     if spec.repository is None:
-        return FetchedModel(Path(spec.original).resolve(), spec)
+        path = Path(spec.original).resolve()
+        return FetchedModel(path=path, source_path=path, overlay_path=None, spec=spec)
     wait_for_disk(minimum_disk_gib, poll_seconds)
     for attempt in range(1, 4):
         try:
@@ -216,16 +272,20 @@ def fetch(spec: ModelSpec, minimum_disk_gib: float, poll_seconds: int) -> Fetche
                     max_workers=8,
                 )
             )
-            path = snapshot / spec.subdirectory if spec.subdirectory else snapshot
-            if spec.subdirectory and not (path / "config.json").is_file():
-                path.mkdir(parents=True, exist_ok=True)
-                for pattern in ("*.json", "*.txt", "*.jinja"):
-                    for source in snapshot.glob(pattern):
-                        destination = path / source.name
-                        if not destination.exists():
-                            shutil.copy(source, destination)
-            sanitize_config(path)
-            return FetchedModel(path, spec)
+            source_path = snapshot / spec.subdirectory if spec.subdirectory else snapshot
+            model_path, overlay_path = (
+                subdirectory_model_view(snapshot, spec.subdirectory)
+                if spec.subdirectory
+                else (snapshot, None)
+            )
+            model_path, sanitized_overlay = sanitized_config_view(model_path)
+            overlay_path = sanitized_overlay or overlay_path
+            return FetchedModel(
+                path=model_path,
+                source_path=source_path,
+                overlay_path=overlay_path,
+                spec=spec,
+            )
         except Exception as error:  # network/model repositories fail heterogeneously
             log(
                 f"download attempt {attempt}/3 failed for {spec.original}: "
@@ -240,21 +300,24 @@ def delete_download(model: FetchedModel, keep: set[str]) -> None:
     repository = model.spec.repository
     if repository is None or repository in keep:
         return
-    target = model.path
+    target = model.source_path
     if not target.exists():
         return
-    size_gib = sum(
-        path.stat().st_size
-        for path in target.rglob("*")
-        if path.is_file() and not path.is_symlink()
-    ) / 2**30
+    size_gib = (
+        sum(
+            path.stat().st_size
+            for path in target.rglob("*")
+            if path.is_file() and not path.is_symlink()
+        )
+        / 2**30
+    )
+    if model.overlay_path is not None and model.overlay_path.exists():
+        shutil.rmtree(model.overlay_path)
     shutil.rmtree(target)
 
     repository_root = HF_HUB / f"models--{repository.replace('/', '--')}"
     linked = {
-        path.resolve()
-        for path in (repository_root / "snapshots").glob("**/*")
-        if path.is_symlink()
+        path.resolve() for path in (repository_root / "snapshots").glob("**/*") if path.is_symlink()
     }
     for blob in (repository_root / "blobs").glob("*"):
         if blob.resolve() not in linked:
