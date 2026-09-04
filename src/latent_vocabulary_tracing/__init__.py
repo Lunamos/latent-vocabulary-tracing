@@ -17,6 +17,7 @@ from .metrics import (
     vocabulary_write_amount,
     weighted_direction_alignment,
 )
+from .provenance import canonicalize_model_config, model_config_hash, stable_json_hash
 from .spans import infer_role_spans, validate_role_spans
 from .summary import SummaryContract, load_summary, summary_view, validate_summary_contract
 from .taxonomy import (
@@ -37,6 +38,7 @@ __all__ = [
     "PairJob",
     "SummaryContract",
     "category_probability_statistics",
+    "canonicalize_model_config",
     "categorize_functional_token",
     "categorize_trace_token",
     "categorize_token",
@@ -50,9 +52,11 @@ __all__ = [
     "load_summary",
     "log_probability_delta",
     "moved_probability_mass",
+    "model_config_hash",
     "normalized_depth",
     "one_sided_sign_test",
     "parse_manifest_line",
+    "stable_json_hash",
     "topk_jaccard",
     "summary_view",
     "select_normalized_depth_layers",

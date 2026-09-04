@@ -42,6 +42,7 @@ from latent_vocabulary_tracing.metrics import (  # noqa: E402
     deterministic_balanced_split,
     one_sided_sign_test,
 )
+from latent_vocabulary_tracing.provenance import model_config_hash  # noqa: E402
 from latent_vocabulary_tracing.taxonomy import (  # noqa: E402
     TRACE_CATEGORIES,
     categorize_trace_token,
@@ -1033,7 +1034,7 @@ def model_metadata(identity, load_source, model):
         "vocab_size": int(config.vocab_size),
         "norm_type": type(norm).__name__,
         "rope": rope,
-        "config_hash": sha256_json(config.to_dict()),
+        "config_hash": model_config_hash(config.to_dict()),
     }
 
 
