@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 research = [
+  "datasets>=3.0",
   "huggingface-hub>=0.25",
   "matplotlib>=3.8",
   "torch>=2.2",
