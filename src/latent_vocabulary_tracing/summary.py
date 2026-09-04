@@ -168,6 +168,12 @@ def validate_summary_contract(
         models = summary.get("models", {})
         for model_key in ("a", "b"):
             model = models.get(model_key, {})
+            top_level_id = summary.get(f"model_{model_key}")
+            if model.get("id") != top_level_id:
+                errors.append(
+                    f"model {model_key!r} identity {model.get('id')!r} does not match "
+                    f"top-level {top_level_id!r}"
+                )
             for field in (
                 "id",
                 "revision",
@@ -206,6 +212,21 @@ def validate_summary_contract(
             lens_prompts = summary.get("lens_n_prompts")
             if not isinstance(lens_prompts, int) or lens_prompts <= 0:
                 errors.append("Jlens fit prompt count is absent or zero")
+            lens_parent = summary.get("lens_parent_id")
+            if lens_parent != summary.get("model_a"):
+                errors.append(
+                    f"Jlens parent {lens_parent!r} does not match model_a "
+                    f"{summary.get('model_a')!r}"
+                )
+            lens_width = summary.get("lens_d_model")
+            parent_width = models.get("a", {}).get("hidden_size")
+            if lens_width != parent_width:
+                errors.append(
+                    f"Jlens hidden width {lens_width!r} does not match parent {parent_width!r}"
+                )
+            lens_layers = summary.get("lens_source_layers")
+            if not isinstance(lens_layers, list) or not set(layers or ()).issubset(lens_layers):
+                errors.append("reported layers are not all present in the Jlens")
         if contract.require_category_statistics:
             category = summary.get("category_statistics", {})
             if not category.get("taxonomy_hash"):

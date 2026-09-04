@@ -1,0 +1,4 @@
+# Selected Jlens instrument check for the main family. This is deliberately
+# separate from the LL headline queue. The 1,500-prompt parent lens replaces
+# the early 110-prompt emergency checkpoint used by legacy analyses.
+q8_math_sft_jlens_confirm | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-Reasoner-8B-SFT | --decoder parent --lens ../repro/lenses/base_n1500.pt --lens-parent-id Qwen/Qwen3-8B-Base --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --support_k 50 --no_store

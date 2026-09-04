@@ -1,15 +1,15 @@
-# Confirmatory Qwen3-8B panel. Base-rooted edges use the frozen Base Jlens;
-# incremental edges use LL because a Base-fitted transport is not a valid Jlens
-# for an SFT/IT parent. Every job emits four-cell parent-anchored metrics, exact
+# Confirmatory Qwen3-8B panel. LL is the semantic primary for every edge; Jlens
+# is run separately on selected base-rooted edges so its validation cannot slow
+# or silently gate the headline analysis. Every job emits four-cell anchored metrics, exact
 # FP32 full-vocabulary category totals, exact top token changes, and an auditable
 # FP32 union-top-50 store for direction analyses. The preregistered profile uses
 # every second block over L6--L34 to halve unembedding cost without changing the
 # normalized 50--85% depth estimand.
-q8_base2it_confirm | Qwen/Qwen3-8B-Base | Qwen/Qwen3-8B | --decoder parent --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
-q8_math_sft_confirm | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-Reasoner-8B-SFT | --decoder parent --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
-q8_math_rlzero_confirm | Qwen/Qwen3-8B-Base | caiyuchen/DAPO-step-27 | --decoder parent --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
-q8_agent_sft_confirm | Qwen/Qwen3-8B-Base | allenai/tmax-sft-8b | --decoder parent --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
-q8_code_sft_confirm | Qwen/Qwen3-8B-Base | IIGroup/X-Coder-SFT-Qwen3-8B | --decoder parent --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_base2it_confirm | Qwen/Qwen3-8B-Base | Qwen/Qwen3-8B | --decoder parent --no_J --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_math_sft_confirm | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-Reasoner-8B-SFT | --decoder parent --no_J --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_math_rlzero_confirm | Qwen/Qwen3-8B-Base | caiyuchen/DAPO-step-27 | --decoder parent --no_J --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_agent_sft_confirm | Qwen/Qwen3-8B-Base | allenai/tmax-sft-8b | --decoder parent --no_J --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_code_sft_confirm | Qwen/Qwen3-8B-Base | IIGroup/X-Coder-SFT-Qwen3-8B | --decoder parent --no_J --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
 q8_math_sft2rl_confirm | Kwai-Klear/Klear-Reasoner-8B-SFT | Kwai-Klear/Klear-Reasoner-8B | --decoder parent --no_J --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
 q8_agent_sft2rl_confirm | allenai/tmax-sft-8b | allenai/tmax-8b | --decoder parent --no_J --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
 q8_code_sft2rl_confirm | IIGroup/X-Coder-SFT-Qwen3-8B | IIGroup/X-Coder-RL-Qwen3-8B | --decoder parent --no_J --layers 6,8,10,12,14,16,18,20,22,24,26,28,30,32,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL

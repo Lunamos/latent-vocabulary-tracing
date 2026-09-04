@@ -26,6 +26,11 @@ def valid_summary() -> dict:
         "model_b": "org/descendant",
         "layers": [4],
         "readouts": ["LL"],
+        "lens_parent_id": "org/parent",
+        "lens_hash": "lens",
+        "lens_n_prompts": 120,
+        "lens_source_layers": [4],
+        "lens_d_model": 8,
         "decoder_mode": "parent_anchored",
         "primary_contrast": "state_parent_decoder",
         "final_decoder_mode": "native_per_model_control",
@@ -45,7 +50,7 @@ def valid_summary() -> dict:
         "stored_support_dtype": "fp32",
         "models": {
             key: {
-                "id": f"org/{key}",
+                "id": "org/parent" if key == "a" else "org/descendant",
                 "revision": f"rev-{key}",
                 "architecture": "Model",
                 "hidden_size": 8,
@@ -97,6 +102,20 @@ def test_contract_rejects_native_or_silent_readout_fallback():
         validate_summary_contract(summary, SummaryContract(readout="LL"))
     with pytest.raises(ValueError, match="readout 'J' absent"):
         validate_summary_contract(valid_summary(), SummaryContract(readout="J"))
+
+
+def test_jlens_contract_requires_named_matching_parent_and_geometry():
+    summary = valid_summary()
+    summary["readouts"] = ["J", "LL"]
+    for domain in summary["agg"].values():
+        domain["J"] = domain["LL"]
+        domain["role_metrics"]["J"] = domain["role_metrics"]["LL"]
+        domain["four_cell"]["J"] = domain["four_cell"]["LL"]
+    validate_summary_contract(summary, SummaryContract(readout="J"))
+
+    summary["lens_parent_id"] = "org/unrelated"
+    with pytest.raises(ValueError, match="does not match model_a"):
+        validate_summary_contract(summary, SummaryContract(readout="J"))
 
 
 def test_contract_checks_directed_response_kl_in_four_cell_output():

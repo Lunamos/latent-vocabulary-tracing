@@ -73,6 +73,11 @@ ap.add_argument(
     "--model-b-id", default="", help="reported descendant identity when loading locally"
 )
 ap.add_argument("--lens", default=f"{ROOT}/repro/lenses/base_merged.pt")
+ap.add_argument(
+    "--lens-parent-id",
+    default="",
+    help="exact Hub repository used to fit --lens; required by confirmatory Jlens contracts",
+)
 ap.add_argument("--probes", default=f"{ZOO}/data/probes.jsonl")
 ap.add_argument("--out", default=f"{ZOO}/results")
 ap.add_argument("--kinds", default="math,code,agent,neutral")
@@ -1048,6 +1053,7 @@ summary = {
     },
     "tag": args.tag,
     "lens": args.lens if J is not None else None,
+    "lens_parent_id": args.lens_parent_id or None,
     "decoder_mode": "parent_anchored" if args.decoder == "parent" else "native_per_model",
     "primary_contrast": ("state_parent_decoder" if args.decoder == "parent" else "native_total"),
     "four_cell_contrasts": FOUR_CELL_CONTRASTS,
@@ -1058,6 +1064,8 @@ summary = {
     },
     "lens_n_prompts": int(lens["n_prompts"]),
     "lens_hash": sha256_file(args.lens) if not args.no_J else None,
+    "lens_source_layers": list(lens.get("source_layers", [])),
+    "lens_d_model": lens.get("d_model"),
     "readouts": list(READOUTS),
     "layers": LAYERS,
     "probes": args.probes,
