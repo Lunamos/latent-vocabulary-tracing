@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "math": {
+      "repository": "DigitalLearningGmbH/MATH-lighteval",
+      "revision": "0530c78699ea5e8eb5530600900e1f328b48acad",
+      "config": "default",
+      "split": "test",
+      "license": "mit",
+      "selection": {
+        "levels": ["Level 3", "Level 4", "Level 5"],
+        "shuffle_seed_main": 777,
+        "shuffle_seed_robustness": 2024,
+        "main_shuffled_rank_range": {
+          "start": 0,
+          "end_inclusive": 29
+        },
+        "count": 30
+      }
+    },
+    "code": {
+      "repository": "openai/openai_humaneval",
+      "revision": "7dce6050a7d6d172f3cc5c32aa97f52fa1a2e544",
+      "config": "openai_humaneval",
+      "split": "test",
+      "license": "mit",
+      "selection": {
+        "main_task_ids": ["HumanEval/0", "HumanEval/29"],
+        "robustness_task_ids": ["HumanEval/60", "HumanEval/89"],
+        "ranges_are_inclusive": true,
+        "count": 30
+      }
+    },
+    "agent": {
+      "repository": "open-thoughts/OpenThoughts-Agent-v1-SFT",
+      "revision": "c5dc896981f4e3b7c5382669b1d1be0bc4b6a1a6",
+      "config": "default",
+      "split": "train",
+      "license": "apache-2.0",
+      "selection": {
+        "main_stream_skip": 0,
+        "robustness_stream_skip": 30,
+        "count": 30,
+        "source_ids_recorded_per_probe": ["task", "run_id", "turn"]
+      }
+    },
+    "neutral": {
+      "repository": "Salesforce/wikitext",
+      "revision": "b08601e04326c79dfdd32d625aee71d232d685c3",
+      "config": "wikitext-103-raw-v1",
+      "split": "train",
+      "license": ["cc-by-sa-3.0", "gfdl"],
+      "selection": {
+        "minimum_characters": 600,
+        "main_qualifying_start": 1500,
+        "robustness_qualifying_start": 2000,
+        "qualifying_stride": 97,
+        "count": 30,
+        "distinct_articles_required": true
+      }
+    }
+  }
+}

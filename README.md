@@ -90,6 +90,10 @@ lvt token classify --scheme trace ' therefore' '\frac' ' stderr' 'def'
 # Audit which surface classes actually occur in each probe domain.
 python zoo/scripts/audit_probe_taxonomy.py Qwen/Qwen3-8B-Base zoo/data/probes.jsonl
 
+# Rebuild the frozen Qwen3 probe panel. Dataset revisions and licenses live in
+# zoo/data/probe_sources.json; the script does not depend on an external checkout.
+python zoo/scripts/build_probes.py
+
 # Convert an older raw-WikiText probe file before a confirmatory rerun.
 python zoo/scripts/match_neutral_context.py zoo/data/probes.jsonl \
   Qwen/Qwen3-8B-Base --style qwen --resample-wikitext
@@ -115,6 +119,11 @@ two tokenizers are compatible.
 - `tests/`: fast CPU tests for the stable package.
 - `zoo/`: research runners and experiment manifests. This layer is still being
   migrated away from workstation-specific paths and is not yet a stable API.
+
+The checked-in probe files are content addressed. Their upstream dataset
+repositories, exact 40-character revisions, configurations, splits, licenses,
+and deterministic main/robustness selections are recorded in
+`zoo/data/probe_sources.json`.
 
 Model weights, fitted lenses, tensor stores, logs, generated analyses, external
 checkouts, manuscripts, and working documentation are excluded from version
