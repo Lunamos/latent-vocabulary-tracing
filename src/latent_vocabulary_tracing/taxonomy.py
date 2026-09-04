@@ -23,6 +23,20 @@ CATEGORIES = (
     "other",
 )
 
+# A second, deliberately coarser taxonomy for reader-facing analyses.  The
+# categories are mutually exclusive.  Any named pair can also be used as
+# non-exhaustive plot coordinates while the remaining classes stay visible in
+# the accompanying full-category summary.
+FUNCTIONAL_CATEGORIES = (
+    "reasoning_process",
+    "answer_commitment",
+    "mathematical_content",
+    "symbolic_notation",
+    "presentation",
+    "general_language",
+    "other",
+)
+
 DISCOURSE = set(
     """wait alternatively so therefore thus hmm okay ok but first second next then now
     let lets let's actually however since because hence verify check recall note suppose
@@ -69,6 +83,138 @@ _PUNCT = re.compile(
     r"""^\s*[!"'(),.:;?\[\]{}<>/\\|@&#~`«»“”‘’…—–、。，：；！？（）「」『』]+\s*$"""
 )
 _WORD = re.compile(r"^\s?[A-Za-z]+[’']?[A-Za-z]*$")
+
+_REASONING_PROCESS = {
+    "actually",
+    "again",
+    "alternatively",
+    "also",
+    "approach",
+    "assume",
+    "because",
+    "but",
+    "case",
+    "cases",
+    "check",
+    "consider",
+    "consequently",
+    "first",
+    "given",
+    "hence",
+    "however",
+    "if",
+    "indeed",
+    "instead",
+    "let",
+    "lets",
+    "method",
+    "moreover",
+    "need",
+    "next",
+    "note",
+    "now",
+    "otherwise",
+    "recall",
+    "second",
+    "similarly",
+    "since",
+    "so",
+    "step",
+    "steps",
+    "suppose",
+    "then",
+    "therefore",
+    "thus",
+    "try",
+    "verify",
+    "wait",
+    "whereas",
+    "while",
+    "likewise",
+    "overall",
+}
+_ANSWER_COMMITMENT = {
+    "answer",
+    "answers",
+    "boxed",
+    "choice",
+    "choices",
+    "conclude",
+    "concludes",
+    "conclusion",
+    "correct",
+    "finally",
+    "final",
+    "option",
+    "options",
+    "result",
+    "results",
+    "solution",
+    "solutions",
+}
+_MATHEMATICAL_CONTENT = {
+    "algebra",
+    "angle",
+    "angles",
+    "coefficient",
+    "denominator",
+    "derivative",
+    "divisor",
+    "equation",
+    "equations",
+    "factor",
+    "factors",
+    "fraction",
+    "function",
+    "geometry",
+    "integer",
+    "integers",
+    "integral",
+    "matrix",
+    "math",
+    "multiple",
+    "numerator",
+    "polynomial",
+    "product",
+    "proof",
+    "ratio",
+    "remainder",
+    "root",
+    "roots",
+    "sequence",
+    "set",
+    "sum",
+    "theorem",
+    "variable",
+    "variables",
+    "vector",
+}
+_SYMBOLIC_WORDS = {
+    "alpha",
+    "beta",
+    "cancel",
+    "cdot",
+    "cos",
+    "cosine",
+    "delta",
+    "frac",
+    "gamma",
+    "lambda",
+    "log",
+    "pi",
+    "sigma",
+    "sin",
+    "sine",
+    "sqrt",
+    "tan",
+    "theta",
+    "times",
+}
+_PRESENTATION_WORDS = {"latex"}
+_SYMBOLIC = re.compile(
+    r"^\s*(?:[-+]?\d[\d,.]*|[=+\-*/^≤≥≠±×÷∑∏∫√∞∂∇∈∉⊂⊆∪∩→⇒⇔∀∃∘·$%]+)\s*$"
+)
+_LATEX_COMMAND = re.compile(r"^\s*\\([A-Za-z]+)\s*$")
 
 
 def categorize_token(token: str) -> str:
@@ -131,4 +277,47 @@ def categorize_token(token: str) -> str:
         return "format"
     if re.match(r"^\s*[-–—]+[A-Za-z]*$", token) or re.match(r"^[^\w\s]+$", token):
         return "punct"
+    return "other"
+
+
+def categorize_functional_token(token: str) -> str:
+    """Assign a token piece to a reader-facing linguistic function.
+
+    This taxonomy is intended for aggregate comparisons, not for inferring a
+    token's context-dependent meaning.  Priority is explicit: answer markers
+    precede reasoning markers, which precede mathematical concepts, notation,
+    presentation, general Latin-language pieces, and a residual class.
+    """
+
+    if not isinstance(token, str):
+        raise TypeError("token must be a string")
+
+    stripped = token.strip()
+    lowered = stripped.lower().strip(".,:;!?()[]{}<>\"'`*_~")
+    lowered = lowered.replace("’", "'")
+
+    # LaTeX commands are sometimes emitted with their backslash and sometimes
+    # as a separate alphabetic tokenizer piece, so test both representations.
+    command_match = _LATEX_COMMAND.match(token)
+    command = command_match.group(1).lower() if command_match else ""
+    lexical = command or lowered.lstrip("\\")
+
+    if lexical in _ANSWER_COMMITMENT:
+        return "answer_commitment"
+    if lexical in _REASONING_PROCESS:
+        return "reasoning_process"
+    if lexical in _MATHEMATICAL_CONTENT:
+        return "mathematical_content"
+    if lexical in _SYMBOLIC_WORDS or _SYMBOLIC.match(token):
+        return "symbolic_notation"
+    if command:
+        return "symbolic_notation"
+    if lexical in _PRESENTATION_WORDS:
+        return "presentation"
+
+    coarse = categorize_token(token)
+    if coarse in {"format", "punct"}:
+        return "presentation"
+    if coarse in {"english", "function", "discourse", "latin_piece"}:
+        return "general_language"
     return "other"

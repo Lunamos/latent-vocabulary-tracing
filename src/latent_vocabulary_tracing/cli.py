@@ -8,7 +8,7 @@ from collections.abc import Sequence
 
 from .manifest import load_manifest
 from .summary import load_summary, summary_view
-from .taxonomy import categorize_token
+from .taxonomy import categorize_functional_token, categorize_token
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -27,6 +27,12 @@ def _parser() -> argparse.ArgumentParser:
     token = commands.add_parser("token", help="work with decoded token strings")
     token_commands = token.add_subparsers(dest="token_command", required=True)
     classify = token_commands.add_parser("classify", help="classify literal token strings")
+    classify.add_argument(
+        "--scheme",
+        choices=("structural", "functional"),
+        default="structural",
+        help="use the fine structural taxonomy or the reader-facing functional taxonomy",
+    )
     classify.add_argument("tokens", nargs="+")
     return parser
 
@@ -46,7 +52,10 @@ def main(argv: Sequence[str] | None = None) -> None:
                 print(f"{key}: {value}")
         return
     if args.command == "token":
+        classifier = (
+            categorize_functional_token if args.scheme == "functional" else categorize_token
+        )
         for token in args.tokens:
-            print(f"{token!r}\t{categorize_token(token)}")
+            print(f"{token!r}\t{classifier(token)}")
         return
     raise AssertionError("unreachable")

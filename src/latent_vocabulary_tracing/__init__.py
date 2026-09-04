@@ -10,11 +10,18 @@ from .metrics import (
     vocabulary_write_amount,
     weighted_direction_alignment,
 )
-from .taxonomy import CATEGORIES, categorize_token
+from .taxonomy import (
+    CATEGORIES,
+    FUNCTIONAL_CATEGORIES,
+    categorize_functional_token,
+    categorize_token,
+)
 
 __all__ = [
     "CATEGORIES",
+    "FUNCTIONAL_CATEGORIES",
     "PairJob",
+    "categorize_functional_token",
     "categorize_token",
     "jensen_shannon_from_logits",
     "kl_divergence_from_logits",

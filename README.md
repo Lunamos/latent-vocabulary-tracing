@@ -46,6 +46,9 @@ lvt summary zoo/results/ro_example_summary.json
 
 # Apply the built-in vocabulary taxonomy to literal tokenizer pieces.
 lvt token classify ' therefore' '\boxed' '<|assistant|>'
+
+# Use the paper's coarser functional classes.
+lvt token classify --scheme functional ' therefore' '\boxed' ' equation'
 ```
 
 ## Python API
