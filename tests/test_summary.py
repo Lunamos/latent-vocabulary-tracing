@@ -43,6 +43,8 @@ def valid_summary() -> dict:
         "decoder_mode": "parent_anchored",
         "primary_contrast": "state_parent_decoder",
         "final_decoder_mode": "native_per_model_control",
+        "transport_mode": {"LL": "identity", "J": "parent_anchored"},
+        "four_cell_decoder_component": "final_norm_and_unembedding",
         "probe_protocol": {
             "neutral_control": "chat_matched_continuation",
             "neutral_source_context_tokens": 48,
@@ -163,6 +165,18 @@ def test_contract_checks_directed_response_kl_in_four_cell_output():
         "kl_ba_resp"
     ]
     with pytest.raises(ValueError, match="four-cell"):
+        validate_summary_contract(summary, SummaryContract(readout="LL"))
+
+
+def test_contract_distinguishes_transport_from_output_decoder():
+    summary = valid_summary()
+    summary["transport_mode"]["LL"] = "parent_anchored"
+    with pytest.raises(ValueError, match="transport_mode"):
+        validate_summary_contract(summary, SummaryContract(readout="LL"))
+
+    summary = valid_summary()
+    summary["four_cell_decoder_component"] = "whole_readout"
+    with pytest.raises(ValueError, match="decoder component"):
         validate_summary_contract(summary, SummaryContract(readout="LL"))
 
 

@@ -81,14 +81,14 @@ def test_faithfulness_never_mixes_native_and_anchored_descendant_logits():
         CELL_BB: final[CELL_BB].clone(),
     }
     faith = matched_faithfulness(final, readout)
-    assert faith["native"]["b"].item() == pytest.approx(0.0, abs=1e-7)
+    assert faith["native_output_decoder"]["b"].item() == pytest.approx(0.0, abs=1e-7)
     assert faith["parent_anchored"]["b"].item() == pytest.approx(0.0, abs=1e-7)
 
-    # Perturbing only the native readout changes native faithfulness but cannot
-    # leak into the parent-anchored number.
+    # Perturbing only the native output-decoder readout changes its
+    # faithfulness but cannot leak into the parent-anchored number.
     readout[CELL_BB] = torch.tensor([[4.0, 0.0]])
     changed = matched_faithfulness(final, readout)
-    assert changed["native"]["b"].item() > 0
+    assert changed["native_output_decoder"]["b"].item() > 0
     assert changed["parent_anchored"]["b"].item() == pytest.approx(0.0, abs=1e-7)
 
 

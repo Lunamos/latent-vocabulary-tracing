@@ -127,6 +127,15 @@ def validate_summary_contract(
 
     if summary.get("final_decoder_mode") != "native_per_model_control":
         errors.append("final logits are not labelled as a native-per-model control")
+    if summary.get("four_cell_decoder_component") != "final_norm_and_unembedding":
+        errors.append("four-cell decoder component is not final norm plus unembedding")
+    expected_transport = "parent_anchored" if contract.readout == "J" else "identity"
+    observed_transport = summary.get("transport_mode", {}).get(contract.readout)
+    if observed_transport != expected_transport:
+        errors.append(
+            f"{contract.readout} transport_mode={observed_transport!r}, "
+            f"need {expected_transport!r}"
+        )
 
     if contract.require_chat_matched_neutral:
         probe_protocol = summary.get("probe_protocol", {})

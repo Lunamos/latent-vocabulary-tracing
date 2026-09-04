@@ -8,8 +8,9 @@ the reference model's final normalization and unembedding to both states, which
 is the primary parent-anchored LVT estimand. ``final`` always compares the two
 models' actual output logits. Metrics per position are:
   kl_ab, kl_ba, js, jaccard@10, top-50 ids/vals of both, cross logits (a_at_b, b_at_a), lse.
-Plus hidden-state stats per layer (cos, linear CKA, dnorm_rel) as in opd/explore/hidden_cka.py, and
-lens faithfulness KL(final_X || Jlens_X), KL(final_X || LL_X) for X in {A, B}.
+Plus hidden-state stats per layer (cos, linear CKA, dnorm_rel) as in
+opd/explore/hidden_cka.py, and lens faithfulness in matched output-decoder
+coordinates. Jlens always retains the reference parent's transport.
 
 Conventions match jlens: block-L output = hidden_states[L+1]; residual fp32 ->
 @J^T (J cast to fp32) -> cast to lm_head dtype -> final_norm -> lm_head -> fp32.
@@ -627,7 +628,7 @@ with torch.no_grad():
             "hidden": {},
             "four_cell": {"J": {}, "LL": {}},
             "faith": {"J": {}, "LL": {}},
-            "faith_native": {"J": {}, "LL": {}},
+            "faith_native_output_decoder": {"J": {}, "LL": {}},
             "faith_anchored": {"J": {}, "LL": {}},
             "categories": {"J": {}, "LL": {}},
             "role_categories": {"J": {}, "LL": {}},
@@ -714,10 +715,14 @@ with torch.no_grad():
                     n_pos,
                     p["prompt_len"],
                 )
-                rec["faith_native"][kind][str(layer)] = faith["native"]
+                rec["faith_native_output_decoder"][kind][str(layer)] = faith[
+                    "native_output_decoder"
+                ]
                 rec["faith_anchored"][kind][str(layer)] = faith["parent_anchored"]
                 rec["faith"][kind][str(layer)] = (
-                    faith["parent_anchored"] if args.decoder == "parent" else faith["native"]
+                    faith["parent_anchored"]
+                    if args.decoder == "parent"
+                    else faith["native_output_decoder"]
                 )
 
                 if category_ids is not None:
@@ -871,7 +876,7 @@ for kind in sorted(kinds):
         "hidden": {},
         "four_cell": {"J": {}, "LL": {}},
         "faith": {"J": {}, "LL": {}},
-        "faith_native": {"J": {}, "LL": {}},
+        "faith_native_output_decoder": {"J": {}, "LL": {}},
         "faith_anchored": {"J": {}, "LL": {}},
         "categories": {"J": {}, "LL": {}},
         "role_categories": {"J": {}, "LL": {}},
@@ -936,7 +941,7 @@ for kind in sorted(kinds):
                     for metric in role_rows[0]
                 }
 
-            for faith_key in ("faith_native", "faith_anchored"):
+            for faith_key in ("faith_native_output_decoder", "faith_anchored"):
                 a[faith_key][ro][str(layer)] = {}
                 for field in ("a", "b", "a_resp", "b_resp"):
                     values = [
@@ -946,7 +951,11 @@ for kind in sorted(kinds):
                     ]
                     if values:
                         a[faith_key][ro][str(layer)][field] = sum(values) / len(values)
-            selected_faith = "faith_anchored" if args.decoder == "parent" else "faith_native"
+            selected_faith = (
+                "faith_anchored"
+                if args.decoder == "parent"
+                else "faith_native_output_decoder"
+            )
             a["faith"][ro][str(layer)] = a[selected_faith][ro][str(layer)]
 
             if args.category_stats:
@@ -1126,9 +1135,19 @@ summary = {
     "primary_contrast": ("state_parent_decoder" if args.decoder == "parent" else "native_total"),
     "four_cell_contrasts": FOUR_CELL_CONTRASTS,
     "final_decoder_mode": "native_per_model_control",
+    "transport_mode": {
+        "LL": "identity",
+        "J": "parent_anchored" if J is not None else None,
+    },
+    "four_cell_decoder_component": "final_norm_and_unembedding",
     "faithfulness_coordinates": {
-        "native": "final and layer readout both use each state's native decoder",
-        "parent_anchored": "final and layer readout both use decoder A",
+        "native_output_decoder": (
+            "final and layer logits use each state's output decoder; Jlens transport "
+            "remains parent anchored"
+        ),
+        "parent_anchored": (
+            "final and layer logits both use output decoder A; Jlens transport is A"
+        ),
     },
     "lens_n_prompts": int(lens["n_prompts"]),
     "lens_hash": sha256_file(args.lens) if not args.no_J else None,

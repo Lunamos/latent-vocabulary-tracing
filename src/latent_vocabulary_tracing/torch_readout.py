@@ -1,9 +1,10 @@
-"""Torch helpers for GPU vocabulary readouts and decoder audits.
+"""Torch helpers for GPU vocabulary readouts and output-decoder audits.
 
 This module is an optional research dependency: importing the core LVT package
 does not import torch.  The helpers keep the four state-by-decoder cells
 explicit so an anchored hidden-state edit is never silently mixed with a
-decoder edit.
+final-norm/unembedding edit. Any upstream transport (such as a parent Jlens)
+is applied before these helpers and must be recorded separately.
 """
 
 from __future__ import annotations
@@ -33,7 +34,7 @@ def four_cell_logits(
     decoder_a: Callable[[torch.Tensor], torch.Tensor],
     decoder_b: Callable[[torch.Tensor], torch.Tensor],
 ) -> dict[str, torch.Tensor]:
-    """Decode both states with both decoders in an explicit four-cell layout."""
+    """Apply both output decoders to both transported states."""
 
     if state_a.shape != state_b.shape:
         raise ValueError(f"state shape mismatch: {tuple(state_a.shape)} != {tuple(state_b.shape)}")
@@ -238,12 +239,14 @@ def matched_faithfulness(
     final_distributions: Mapping[str, tuple[torch.Tensor, torch.Tensor]] | None = None,
     readout_distributions: Mapping[str, tuple[torch.Tensor, torch.Tensor]] | None = None,
 ) -> dict[str, dict[str, torch.Tensor]]:
-    """Measure faithfulness without crossing decoder coordinate systems.
+    """Measure faithfulness without crossing output-decoder coordinates.
 
-    Native faithfulness compares ``AA`` and ``BB`` with their respective native
-    final logits.  Parent-anchored faithfulness compares ``AA`` and ``BA`` with
-    final states decoded by decoder A.  The descendant's native final logits
-    never enter the anchored quantity.
+    Native-output-decoder faithfulness compares AA and BB with final logits
+    expressed through their respective output decoders. Parent-anchored
+    faithfulness compares AA and BA with both final states decoded by decoder
+    A. The descendant's native final logits never enter the anchored quantity.
+    This helper does not know whether an upstream transport was identity,
+    parent anchored, or native; callers must label it independently.
     """
 
     needed = {CELL_AA, CELL_BA, CELL_BB}
@@ -264,7 +267,7 @@ def matched_faithfulness(
 
     parent = faith(CELL_AA, CELL_AA)
     return {
-        "native": {
+        "native_output_decoder": {
             "a": parent,
             "b": faith(CELL_BB, CELL_BB),
         },
