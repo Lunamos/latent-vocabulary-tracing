@@ -34,6 +34,7 @@ def _parser() -> argparse.ArgumentParser:
         help="also require the primary parent-anchored response-KL contract",
     )
     summary.add_argument("--require-categories", action="store_true")
+    summary.add_argument("--require-readout-diagnostics", action="store_true")
     summary.add_argument("--require-fp32-store", action="store_true")
     summary.add_argument("--expected-probes-per-domain", type=int)
     summary.add_argument(
@@ -67,6 +68,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     if args.command == "summary":
         if (
             args.require_categories
+            or args.require_readout_diagnostics
             or args.require_fp32_store
             or args.expected_probes_per_domain is not None
             or args.edge_registry
@@ -77,6 +79,7 @@ def main(argv: Sequence[str] | None = None) -> None:
             SummaryContract(
                 readout=args.contract_readout,
                 require_category_statistics=args.require_categories,
+                require_readout_diagnostics=args.require_readout_diagnostics,
                 require_fp32_store=args.require_fp32_store,
                 expected_probes_per_domain=args.expected_probes_per_domain,
                 require_edge_registry=registry is not None,

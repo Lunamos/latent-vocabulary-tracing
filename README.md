@@ -74,7 +74,7 @@ lvt summary zoo/results/ro_example_summary.json
 
 # Refuse legacy/native results when building a confirmatory LL analysis.
 lvt summary zoo/results/ro_example_summary.json --contract-readout LL \
-  --require-categories --require-fp32-store \
+  --require-categories --require-readout-diagnostics --require-fp32-store \
   --expected-probes-per-domain 30 \
   --edge-registry zoo/data/edge_registry.json
 

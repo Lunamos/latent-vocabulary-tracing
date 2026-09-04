@@ -77,6 +77,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--contract-readout", choices=("J", "LL"))
     parser.add_argument("--require-categories", action="store_true")
+    parser.add_argument("--require-readout-diagnostics", action="store_true")
     parser.add_argument("--require-fp32-store", action="store_true")
     parser.add_argument("--expected-probes-per-domain", type=int)
     parser.add_argument(
@@ -86,7 +87,10 @@ def parse_args() -> argparse.Namespace:
     )
     args = parser.parse_args()
     if (
-        args.require_categories or args.require_fp32_store or args.expected_probes_per_domain
+        args.require_categories
+        or args.require_readout_diagnostics
+        or args.require_fp32_store
+        or args.expected_probes_per_domain
     ) and not args.contract_readout:
         parser.error("contract requirements need --contract-readout")
     if args.expected_probes_per_domain is not None and args.expected_probes_per_domain <= 0:
@@ -344,6 +348,7 @@ def validate_result(path: Path, args: argparse.Namespace) -> None:
     contract = SummaryContract(
         readout=args.contract_readout,
         require_category_statistics=args.require_categories,
+        require_readout_diagnostics=args.require_readout_diagnostics,
         require_fp32_store=args.require_fp32_store,
         expected_probes_per_domain=args.expected_probes_per_domain,
         require_edge_registry=args.edge_registry is not None,

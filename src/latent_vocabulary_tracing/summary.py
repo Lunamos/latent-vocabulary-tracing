@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,7 @@ class SummaryContract:
     require_provenance: bool = True
     require_matched_architecture: bool = True
     require_category_statistics: bool = False
+    require_readout_diagnostics: bool = False
     require_fp32_store: bool = False
     require_edge_registry: bool = False
     require_chat_matched_neutral: bool = True
@@ -138,6 +140,56 @@ def validate_summary_contract(
                             f"role-conditioned {role_metric!r}"
                         )
                         break
+            if contract.require_readout_diagnostics:
+                diagnostic_root = domain_result.get("readout_diagnostics")
+                if not isinstance(diagnostic_root, dict):
+                    errors.append(f"domain {domain!r} lacks readout diagnostics")
+                    continue
+                diagnostics = diagnostic_root.get(contract.readout)
+                if not isinstance(diagnostics, dict):
+                    errors.append(
+                        f"domain {domain!r} lacks {contract.readout} readout diagnostics"
+                    )
+                    continue
+                for layer in layers:
+                    layer_diagnostics = diagnostics.get(str(layer), {})
+                    for coordinate in ("parent_anchored", "native_output_decoder"):
+                        for model_key in ("a", "b"):
+                            values = (
+                                layer_diagnostics.get(coordinate, {}).get(model_key, {})
+                                if isinstance(layer_diagnostics, dict)
+                                and isinstance(layer_diagnostics.get(coordinate), dict)
+                                else {}
+                            )
+                            for field in (
+                                "faith_kl",
+                                "faith_kl_resp",
+                                "topk_jaccard",
+                                "topk_jaccard_resp",
+                                "malformed_token_mass",
+                                "malformed_token_mass_resp",
+                            ):
+                                value = values.get(field) if isinstance(values, dict) else None
+                                path = f"{coordinate}/{model_key}/{field}"
+                                if (
+                                    isinstance(value, bool)
+                                    or not isinstance(value, (int, float))
+                                    or not math.isfinite(float(value))
+                                ):
+                                    errors.append(
+                                        f"domain {domain!r}, {contract.readout} L{layer} lacks "
+                                        f"finite readout diagnostic {path}"
+                                    )
+                                elif field.startswith("faith_kl") and value < 0:
+                                    errors.append(
+                                        f"domain {domain!r}, {contract.readout} L{layer} has "
+                                        f"negative readout diagnostic {path}={value!r}"
+                                    )
+                                elif not field.startswith("faith_kl") and not 0 <= value <= 1:
+                                    errors.append(
+                                        f"domain {domain!r}, {contract.readout} L{layer} has "
+                                        f"out-of-range readout diagnostic {path}={value!r}"
+                                    )
 
     if summary.get("final_decoder_mode") != "native_per_model_control":
         errors.append("final logits are not labelled as a native-per-model control")
@@ -150,6 +202,18 @@ def validate_summary_contract(
             f"{contract.readout} transport_mode={observed_transport!r}, "
             f"need {expected_transport!r}"
         )
+    if contract.require_readout_diagnostics:
+        diagnostic_contract = summary.get("readout_diagnostic_contract", {})
+        if diagnostic_contract.get("topk") != 10:
+            errors.append("readout diagnostic top-k is not the frozen value 10")
+        if diagnostic_contract.get("topk_overlap") != (
+            "Jaccard overlap with the matched final distribution"
+        ):
+            errors.append("readout top-k diagnostic is absent or uses another reference")
+        if diagnostic_contract.get("malformed_token_mass") != (
+            "readout probability on pieces containing U+FFFD or disallowed control characters"
+        ):
+            errors.append("malformed-token diagnostic is absent or uses another definition")
 
     if contract.require_chat_matched_neutral:
         probe_protocol = summary.get("probe_protocol", {})

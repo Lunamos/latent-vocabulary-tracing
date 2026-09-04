@@ -19,6 +19,27 @@ def valid_summary() -> dict:
             "four_cell": {
                 "LL": {"4": {"state_parent_decoder": {"kl_ba_resp": 0.2}}}
             },
+            "readout_diagnostics": {
+                "LL": {
+                    "4": {
+                        coordinate: {
+                            model_key: {
+                                "faith_kl": 0.2,
+                                "faith_kl_resp": 0.2,
+                                "topk_jaccard": 0.5,
+                                "topk_jaccard_resp": 0.5,
+                                "malformed_token_mass": 0.01,
+                                "malformed_token_mass_resp": 0.01,
+                            }
+                            for model_key in ("a", "b")
+                        }
+                        for coordinate in (
+                            "parent_anchored",
+                            "native_output_decoder",
+                        )
+                    }
+                }
+            },
         }
     return {
         "schema_version": 2,
@@ -46,6 +67,13 @@ def valid_summary() -> dict:
         "final_decoder_mode": "native_per_model_control",
         "transport_mode": {"LL": "identity", "J": "parent_anchored"},
         "four_cell_decoder_component": "final_norm_and_unembedding",
+        "readout_diagnostic_contract": {
+            "topk": 10,
+            "topk_overlap": "Jaccard overlap with the matched final distribution",
+            "malformed_token_mass": (
+                "readout probability on pieces containing U+FFFD or disallowed control characters"
+            ),
+        },
         "probe_protocol": {
             "neutral_control": "chat_matched_continuation",
             "neutral_source_context_tokens": 48,
@@ -210,6 +238,42 @@ def test_contract_distinguishes_transport_from_output_decoder():
     summary["four_cell_decoder_component"] = "whole_readout"
     with pytest.raises(ValueError, match="decoder component"):
         validate_summary_contract(summary, SummaryContract(readout="LL"))
+
+
+def test_contract_can_require_matched_readout_diagnostics():
+    validate_summary_contract(
+        valid_summary(),
+        SummaryContract(readout="LL", require_readout_diagnostics=True),
+    )
+    summary = valid_summary()
+    del summary["agg"]["math"]["readout_diagnostics"]["LL"]["4"][
+        "parent_anchored"
+    ]["b"]["topk_jaccard_resp"]
+    with pytest.raises(ValueError, match="readout diagnostic"):
+        validate_summary_contract(
+            summary,
+            SummaryContract(readout="LL", require_readout_diagnostics=True),
+        )
+
+    summary = valid_summary()
+    summary["agg"]["math"]["readout_diagnostics"]["LL"]["4"][
+        "native_output_decoder"
+    ]["a"]["malformed_token_mass"] = 1.1
+    with pytest.raises(ValueError, match="out-of-range readout diagnostic"):
+        validate_summary_contract(
+            summary,
+            SummaryContract(readout="LL", require_readout_diagnostics=True),
+        )
+
+    summary = valid_summary()
+    summary["agg"]["math"]["readout_diagnostics"]["LL"]["4"][
+        "parent_anchored"
+    ]["a"]["faith_kl_resp"] = float("nan")
+    with pytest.raises(ValueError, match="finite readout diagnostic"):
+        validate_summary_contract(
+            summary,
+            SummaryContract(readout="LL", require_readout_diagnostics=True),
+        )
 
 
 def test_fp32_contract_rejects_reconstructed_direction_values():
