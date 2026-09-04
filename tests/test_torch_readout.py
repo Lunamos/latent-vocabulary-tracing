@@ -8,11 +8,13 @@ from latent_vocabulary_tracing.torch_readout import (  # noqa: E402
     CELL_BA,
     CELL_BB,
     aggregate_category_statistics_by_spans,
+    aggregate_position_metrics_by_spans,
     category_statistics,
     cell_distributions,
     four_cell_logits,
     four_cell_scalar_metrics,
     matched_faithfulness,
+    net_token_direction_scores,
     pair_metrics,
     vocabulary_edit_statistics,
 )
@@ -115,6 +117,16 @@ def test_role_aggregation_weights_positions_then_returns_probe_vectors():
     assert roles["action"]["turnover"].tolist() == pytest.approx([6.0, 7.0])
 
 
+def test_position_metric_role_aggregation_handles_disjoint_spans():
+    roles = aggregate_position_metrics_by_spans(
+        {"kl_ba": torch.tensor([1.0, 3.0, 5.0, 7.0]), "js": torch.ones(4)},
+        {"observation": [[0, 2]], "action": [[2, 3], [3, 9]]},
+        fields=("kl_ba", "js"),
+    )
+    assert roles["observation"]["kl_ba"].item() == pytest.approx(2.0)
+    assert roles["action"]["kl_ba"].item() == pytest.approx(6.0)
+
+
 def test_full_vocabulary_edit_exposes_newly_promoted_tokens():
     parent = torch.log(torch.tensor([[0.70, 0.20, 0.09, 0.01]]))
     descendant = torch.log(torch.tensor([[0.45, 0.20, 0.09, 0.26]]))
@@ -127,6 +139,14 @@ def test_full_vocabulary_edit_exposes_newly_promoted_tokens():
     assert delta.argmax().item() == 3
     assert delta[0, 3].item() == pytest.approx(0.25)
     assert categories["promoted"][0, 1].item() == pytest.approx(0.25)
+
+
+def test_exact_token_directions_use_net_change_after_averaging():
+    signed = torch.tensor([0.30, -0.20, 0.0, -0.10])
+    promoted, suppressed = net_token_direction_scores(signed)
+    assert promoted.tolist() == pytest.approx([0.30, 0.0, 0.0, 0.0])
+    assert suppressed.tolist() == pytest.approx([0.0, 0.20, 0.0, 0.10])
+    assert not torch.logical_and(promoted > 0, suppressed > 0).any()
 
 
 def test_cached_distributions_reproduce_all_metrics():

@@ -46,10 +46,12 @@ from latent_vocabulary_tracing.torch_readout import (  # noqa: E402
     CELL_BB,
     FOUR_CELL_CONTRASTS,
     aggregate_category_statistics_by_spans,
+    aggregate_position_metrics_by_spans,
     cell_distributions,
     four_cell_logits,
     four_cell_scalar_metrics,
     matched_faithfulness,
+    net_token_direction_scores,
     pair_metrics,
     vocabulary_edit_statistics,
 )
@@ -264,6 +266,7 @@ if args.limit:
 print(f"{len(probes)} probes, kinds={sorted(kinds)}", flush=True)
 
 category_ids = None
+category_ids_cpu = None
 displayable_ids = None
 if args.category_stats:
     print(
@@ -280,7 +283,51 @@ if args.category_stats:
     displayable_ids = torch.tensor(
         [is_displayable_trace_token(piece) for piece in token_pieces], dtype=torch.bool
     )
+    category_ids_cpu = category_ids.cpu()
     del token_pieces
+
+
+def top_token_rows(values, signed_values, mask=None):
+    ranked = values if mask is None else values.masked_fill(~mask, -torch.inf)
+    top_values, top_ids = ranked.topk(min(args.top_changes, ranked.numel()))
+    return [
+        {
+            "id": int(token_id),
+            "token": tok.decode([int(token_id)]),
+            "probability_points": 100.0 * float(value),
+            "signed_probability_points": 100.0 * float(signed_values[token_id]),
+        }
+        for value, token_id in zip(top_values, top_ids, strict=True)
+        if value > 0
+    ]
+
+
+def token_change_payload(changes, *, include_categories=False):
+    signed = changes[0]
+    promoted, suppressed = net_token_direction_scores(signed)
+    payload = {
+        "promoted": top_token_rows(promoted, signed),
+        "suppressed": top_token_rows(suppressed, signed),
+        "displayable_promoted": top_token_rows(promoted, signed, displayable_ids),
+        "displayable_suppressed": top_token_rows(suppressed, signed, displayable_ids),
+    }
+    if include_categories:
+        payload["displayable_by_category"] = {
+            category: {
+                "promoted": top_token_rows(
+                    promoted,
+                    signed,
+                    displayable_ids & (category_ids_cpu == category_index),
+                ),
+                "suppressed": top_token_rows(
+                    suppressed,
+                    signed,
+                    displayable_ids & (category_ids_cpu == category_index),
+                ),
+            }
+            for category_index, category in enumerate(TRACE_CATEGORIES)
+        }
+    return payload
 
 
 def summarize_position_metrics(metrics, span, n_pos, prompt_len):
@@ -360,6 +407,7 @@ with torch.no_grad():
             "faith_anchored": {"J": {}, "LL": {}},
             "categories": {"J": {}, "LL": {}},
             "role_categories": {"J": {}, "LL": {}},
+            "role_metrics": {"J": {}, "LL": {}},
         }
         st = {
             "n_pos": n_pos,
@@ -406,6 +454,24 @@ with torch.no_grad():
                 rec["per_layer"][kind][str(layer)] = summarize_position_metrics(
                     m, span, n_pos, p["prompt_len"]
                 )
+                role_metrics = aggregate_position_metrics_by_spans(
+                    m,
+                    p.get("role_spans", {}),
+                    fields=(
+                        "kl_ab",
+                        "kl_ba",
+                        "js",
+                        "jaccard",
+                        "support_mass_a",
+                        "support_mass_b",
+                        "outside_mass_a",
+                        "outside_mass_b",
+                    ),
+                )
+                rec["role_metrics"][kind][str(layer)] = {
+                    role: {metric: float(value) for metric, value in values.items()}
+                    for role, values in role_metrics.items()
+                }
 
                 four_cell = four_cell_scalar_metrics(cells, distributions=distributions)
                 rec["four_cell"][kind][str(layer)] = {
@@ -500,6 +566,14 @@ with torch.no_grad():
             descendant_distribution=final_distributions[CELL_BB],
         )
         rec["final"] = summarize_position_metrics(m, span, n_pos, p["prompt_len"])
+        rec["final_role_metrics"] = {
+            role: {metric: float(value) for metric, value in values.items()}
+            for role, values in aggregate_position_metrics_by_spans(
+                m,
+                p.get("role_spans", {}),
+                fields=("kl_ab", "kl_ba", "js", "jaccard"),
+            ).items()
+        }
         rec["final_four_cell"] = {
             name: summarize_position_metrics(values, span, n_pos, p["prompt_len"])
             for name, values in final_four_cell_metrics.items()
@@ -549,6 +623,7 @@ for kind in sorted(kinds):
         "categories": {"J": {}, "LL": {}},
         "role_categories": {"J": {}, "LL": {}},
         "top_token_changes": {"J": {}, "LL": {}},
+        "role_metrics": {"J": {}, "LL": {}},
     }
     for layer in LAYERS:
         for ro in READOUTS:
@@ -588,6 +663,25 @@ for kind in sorted(kinds):
                     ]
                     if values:
                         a["four_cell"][ro][str(layer)][contrast][field] = sum(values) / len(values)
+
+            role_names = sorted(
+                {
+                    role
+                    for r in rs
+                    for role in r["role_metrics"][ro].get(str(layer), {})
+                }
+            )
+            a["role_metrics"][ro][str(layer)] = {}
+            for role in role_names:
+                role_rows = [
+                    r["role_metrics"][ro][str(layer)][role]
+                    for r in rs
+                    if role in r["role_metrics"][ro].get(str(layer), {})
+                ]
+                a["role_metrics"][ro][str(layer)][role] = {
+                    metric: sum(row[metric] for row in role_rows) / len(role_rows)
+                    for metric in role_rows[0]
+                }
 
             for faith_key in ("faith_native", "faith_anchored"):
                 a[faith_key][ro][str(layer)] = {}
@@ -637,37 +731,31 @@ for kind in sorted(kinds):
                     }
                 change_key = (kind, ro, layer)
                 if change_key in token_change_sums:
-                    signed, promoted, suppressed = (
+                    changes = (
                         token_change_sums[change_key] / token_change_counts[change_key]
                     )
-
-                    def top_token_rows(values, mask=None, signed_values=signed):
-                        ranked = values if mask is None else values.masked_fill(~mask, -torch.inf)
-                        top_values, top_ids = ranked.topk(
-                            min(args.top_changes, ranked.numel())
-                        )
-                        return [
-                            {
-                                "id": int(token_id),
-                                "token": tok.decode([int(token_id)]),
-                                "probability_points": 100.0 * float(value),
-                                "signed_probability_points": 100.0
-                                * float(signed_values[token_id]),
-                            }
-                            for value, token_id in zip(top_values, top_ids, strict=True)
-                            if value > 0
-                        ]
-
-                    a["top_token_changes"][ro][str(layer)] = {
-                        "promoted": top_token_rows(promoted),
-                        "suppressed": top_token_rows(suppressed),
-                        "displayable_promoted": top_token_rows(promoted, displayable_ids),
-                        "displayable_suppressed": top_token_rows(suppressed, displayable_ids),
-                    }
+                    a["top_token_changes"][ro][str(layer)] = token_change_payload(changes)
         a["hidden"][str(layer)] = {
             k: sum(r["hidden"][str(layer)][k] for r in rs) / len(rs)
             for k in ("cos", "cka", "dnorm_rel")
         }
+    if args.category_stats:
+        n_model_layers = len(_parts(model_a)[1])
+        summary_layers = [
+            layer for layer in LAYERS if 0.50 <= (layer + 1) / n_model_layers <= 0.85
+        ]
+        for ro in READOUTS:
+            changes = [
+                token_change_sums[(kind, ro, layer)]
+                / token_change_counts[(kind, ro, layer)]
+                for layer in summary_layers
+                if (kind, ro, layer) in token_change_sums
+            ]
+            if changes:
+                depth_average = torch.stack(changes).mean(dim=0)
+                a["top_token_changes"][ro]["depth_50_85"] = token_change_payload(
+                    depth_average, include_categories=True
+                )
     a["final"] = {
         k: sum(r["final"][k] for r in rs) / len(rs) for k in ("kl_ab", "kl_ba", "js", "jaccard")
     }
@@ -686,6 +774,14 @@ for kind in sorted(kinds):
             ]
             if values:
                 a["final_four_cell"][contrast][field] = sum(values) / len(values)
+    final_roles = sorted({role for r in rs for role in r["final_role_metrics"]})
+    a["final_role_metrics"] = {}
+    for role in final_roles:
+        role_rows = [r["final_role_metrics"][role] for r in rs if role in r["final_role_metrics"]]
+        a["final_role_metrics"][role] = {
+            metric: sum(row[metric] for row in role_rows) / len(role_rows)
+            for metric in role_rows[0]
+        }
     a["nll"] = {x: sum(r["nll"][x] for r in rs) / len(rs) for x in ("a", "b")}
     agg[kind] = a
 
@@ -726,7 +822,7 @@ summary = {
         "b": model_metadata(args.model_b, model_b),
     },
     "tag": args.tag,
-    "lens": args.lens,
+    "lens": args.lens if J is not None else None,
     "decoder_mode": "parent_anchored" if args.decoder == "parent" else "native_per_model",
     "primary_contrast": ("state_parent_decoder" if args.decoder == "parent" else "native_total"),
     "four_cell_contrasts": FOUR_CELL_CONTRASTS,
@@ -755,6 +851,13 @@ summary = {
         "averaging": "positions_within_probe_then_probes",
         "top_changes": args.top_changes if args.category_stats else None,
         "top_change_support": "full_vocabulary" if args.category_stats else None,
+        "top_change_ranking": (
+            "net_probability_delta_after_averaging" if args.category_stats else None
+        ),
+        "top_change_values": "percentage_points" if args.category_stats else None,
+        "depth_summary": (
+            {"minimum": 0.50, "maximum": 0.85} if args.category_stats else None
+        ),
     },
     "direction_statistics": {
         "quantity": "delta_logp",
@@ -783,7 +886,7 @@ if not args.no_store:
             "layers": LAYERS,
             "model_a": args.model_a,
             "model_b": args.model_b,
-            "lens": args.lens,
+            "lens": args.lens if J is not None else None,
             "decoder_mode": summary["decoder_mode"],
             "schema_version": summary["schema_version"],
             "primary_contrast": summary["primary_contrast"],
@@ -802,13 +905,22 @@ def dig(kind):
     if not a:
         return ""
     ro = "J" if "J" in READOUTS else "LL"
-    wb = [a[ro][str(layer)]["js"] for layer in LAYERS if 20 <= layer <= 26] or [
-        a[ro][str(LAYERS[len(LAYERS) // 2])]["js"]
+    n_model_layers = len(_parts(model_a)[1])
+    selected_layers = [
+        layer for layer in LAYERS if 0.50 <= (layer + 1) / n_model_layers <= 0.85
+    ] or [LAYERS[len(LAYERS) // 2]]
+    response_kl = [
+        a[ro][str(layer)]["kl_ba_resp"]
+        for layer in selected_layers
+        if a[ro][str(layer)]["kl_ba_resp"] is not None
     ]
     middle = str(22 if 22 in LAYERS else LAYERS[len(LAYERS) // 2])
+    coordinate = "parent-anchored" if args.decoder == "parent" else "native"
+    write_amount = sum(response_kl) / len(response_kl) if response_kl else float("nan")
     return (
-        f"{kind}: {ro}-work-band JS={sum(wb) / len(wb):.4f} "
-        f"final JS={a['final']['js']:.4f} L{middle} "
+        f"{kind}: {ro} mean response KL(B||A), {coordinate}, "
+        f"depth 0.50-0.85={write_amount:.4f}; "
+        f"native-final response KL(B||A)={a['final']['kl_ba_resp']:.4f}; L{middle} "
         f"cos={a['hidden'][middle]['cos']:.3f} "
         f"nll a/b={a['nll']['a']:.3f}/{a['nll']['b']:.3f}"
     )

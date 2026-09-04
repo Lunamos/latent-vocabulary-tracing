@@ -26,6 +26,8 @@ class SummaryContract:
     metric: str = "kl_ba_resp"
     minimum_schema_version: int = 2
     require_four_cell: bool = True
+    require_role_metrics: bool = True
+    require_provenance: bool = True
     require_category_statistics: bool = False
     require_fp32_store: bool = False
 
@@ -105,6 +107,19 @@ def validate_summary_contract(
                             f"{contract.primary_contrast}/{contract.metric}"
                         )
                         break
+            if contract.require_role_metrics:
+                role_layers = domain_result.get("role_metrics", {}).get(contract.readout, {})
+                role_metric = contract.metric.removesuffix("_resp")
+                for layer in layers:
+                    role_result = role_layers.get(str(layer), {})
+                    if not role_result or not any(
+                        role_metric in values for values in role_result.values()
+                    ):
+                        errors.append(
+                            f"domain {domain!r}, {contract.readout} L{layer} lacks "
+                            f"role-conditioned {role_metric!r}"
+                        )
+                        break
 
     if summary.get("final_decoder_mode") != "native_per_model_control":
         errors.append("final logits are not labelled as a native-per-model control")
@@ -119,6 +134,12 @@ def validate_summary_contract(
             errors.append(
                 f"category support={category.get('support')!r}, need 'full_vocabulary'"
             )
+        if not category.get("role_conditioned"):
+            errors.append("category statistics are not role-conditioned")
+        if category.get("top_change_support") != "full_vocabulary":
+            errors.append("exact token changes do not use full-vocabulary support")
+        if category.get("top_change_ranking") != "net_probability_delta_after_averaging":
+            errors.append("exact token changes are not ranked by net probability change")
     if contract.require_fp32_store:
         stored_dtype = summary.get("stored_support_dtype", summary.get("support_dtype"))
         if stored_dtype != "fp32":
@@ -132,6 +153,37 @@ def validate_summary_contract(
             errors.append("direction support is not the parent/descendant top-k union")
         if not direction.get("support_coverage_reported"):
             errors.append("direction-support coverage is not reported")
+
+    if contract.require_provenance:
+        models = summary.get("models", {})
+        for model_key in ("a", "b"):
+            model = models.get(model_key, {})
+            for field in (
+                "id",
+                "revision",
+                "architecture",
+                "hidden_size",
+                "n_layers",
+                "vocab_size",
+                "norm_type",
+                "config_hash",
+            ):
+                if model.get(field) in (None, ""):
+                    errors.append(f"model {model_key!r} lacks provenance field {field!r}")
+        if not summary.get("probe_hash"):
+            errors.append("probe_hash is absent")
+        tokenizer = summary.get("tokenizer_note", {})
+        if tokenizer.get("id_piece_mismatches") != 0:
+            errors.append("probe token ids were not verified identical across tokenizers")
+        for field in ("tokenizer_hash_a", "tokenizer_hash_b"):
+            if not tokenizer.get(field):
+                errors.append(f"tokenizer provenance field {field!r} is absent")
+        if contract.readout == "J":
+            if not summary.get("lens_hash"):
+                errors.append("Jlens hash is absent")
+            lens_prompts = summary.get("lens_n_prompts")
+            if not isinstance(lens_prompts, int) or lens_prompts <= 0:
+                errors.append("Jlens fit prompt count is absent or zero")
 
     if errors:
         tag = summary.get("tag", "<unknown>")

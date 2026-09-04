@@ -14,6 +14,7 @@ def valid_summary() -> dict:
     for domain in ("math", "code", "agent", "neutral"):
         domains[domain] = {
             "LL": {"4": {"kl_ba_resp": 0.2}},
+            "role_metrics": {"LL": {"4": {"model_response": {"kl_ba": 0.2}}}},
             "four_cell": {
                 "LL": {"4": {"state_parent_decoder": {"kl_ba_resp": 0.2}}}
             },
@@ -32,8 +33,30 @@ def valid_summary() -> dict:
             "enabled": True,
             "dtype": "fp32",
             "support": "full_vocabulary",
+            "role_conditioned": True,
+            "top_change_support": "full_vocabulary",
+            "top_change_ranking": "net_probability_delta_after_averaging",
         },
         "stored_support_dtype": "fp32",
+        "models": {
+            key: {
+                "id": f"org/{key}",
+                "revision": f"rev-{key}",
+                "architecture": "Model",
+                "hidden_size": 8,
+                "n_layers": 5,
+                "vocab_size": 16,
+                "norm_type": "RMSNorm",
+                "config_hash": f"config-{key}",
+            }
+            for key in ("a", "b")
+        },
+        "probe_hash": "probes",
+        "tokenizer_note": {
+            "id_piece_mismatches": 0,
+            "tokenizer_hash_a": "tokenizer",
+            "tokenizer_hash_b": "tokenizer",
+        },
         "direction_statistics": {
             "quantity": "delta_logp",
             "dtype": "fp32",

@@ -431,3 +431,58 @@ def aggregate_category_statistics_by_spans(
             for metric, values in statistics.items()
         }
     return output
+
+
+def aggregate_position_metrics_by_spans(
+    metrics: Mapping[str, torch.Tensor],
+    role_spans: Mapping[str, Sequence[Sequence[int]]],
+    *,
+    fields: Sequence[str],
+) -> dict[str, dict[str, torch.Tensor]]:
+    """Average one-dimensional per-position metrics within protocol roles."""
+
+    missing = set(fields).difference(metrics)
+    if missing:
+        raise ValueError(f"missing position metrics: {sorted(missing)}")
+    lengths = {metrics[field].shape for field in fields}
+    if len(lengths) != 1 or len(next(iter(lengths))) != 1:
+        raise ValueError("position metric fields must share shape [position]")
+    n_positions = next(iter(lengths))[0]
+    output: dict[str, dict[str, torch.Tensor]] = {}
+    for role, spans in role_spans.items():
+        indices = []
+        for span in spans:
+            if len(span) != 2:
+                raise ValueError(f"role {role!r} contains a malformed span")
+            start, end = int(span[0]), int(span[1])
+            if start < 0 or end <= start:
+                raise ValueError(f"role {role!r} contains invalid span {(start, end)}")
+            if start < n_positions:
+                indices.append((start, min(end, n_positions)))
+        if not indices:
+            continue
+        output[role] = {
+            field: torch.cat([metrics[field][start:end] for start, end in indices]).mean()
+            for field in fields
+        }
+    return output
+
+
+def net_token_direction_scores(
+    signed_probability_delta: torch.Tensor,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return disjoint promotion and suppression scores for exact tokens.
+
+    Category turnover deliberately preserves positive and negative movement
+    before cancellation. Exact token labels answer a different question:
+    whether a token increased or decreased after position/probe/depth
+    averaging. Ranking gross movement can otherwise put one token in both
+    lists, or call a token promoted despite a negative net change.
+    """
+
+    if signed_probability_delta.ndim != 1:
+        raise ValueError("signed_probability_delta must be a vocabulary vector")
+    return (
+        signed_probability_delta.clamp_min(0),
+        (-signed_probability_delta).clamp_min(0),
+    )
