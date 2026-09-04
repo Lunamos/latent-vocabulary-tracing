@@ -117,7 +117,7 @@ ap.add_argument(
 ap.add_argument(
     "--layers",
     default="",
-    help="explicit layer list (e.g. 4,5,...,30) when --no_J; default = lens layers",
+    help="explicit layer list (e.g. 4,6,...,30); with Jlens, select a subset of its layers",
 )
 ap.add_argument(
     "--decoder",
@@ -136,11 +136,29 @@ if args.no_J:
         if args.layers
         else list(range(args.lmin, args.lmax + 1))
     )
+    if not LAYERS:
+        raise ValueError("no layers selected")
     J = None
     print(f"no J-lens; layers {LAYERS[0]}..{LAYERS[-1]} ({len(LAYERS)})", flush=True)
 else:
     lens = torch.load(args.lens, map_location="cpu", weights_only=True)
-    LAYERS = [layer for layer in lens["source_layers"] if args.lmin <= layer <= args.lmax]
+    requested_layers = (
+        {int(value) for value in args.layers.split(",")} if args.layers else None
+    )
+    LAYERS = [
+        layer
+        for layer in lens["source_layers"]
+        if args.lmin <= layer <= args.lmax
+        and (requested_layers is None or layer in requested_layers)
+    ]
+    if requested_layers is not None:
+        missing_layers = requested_layers.difference(lens["source_layers"])
+        if missing_layers:
+            raise ValueError(
+                f"requested layers absent from Jlens: {sorted(missing_layers)}"
+            )
+    if not LAYERS:
+        raise ValueError("no Jlens layers remain after applying the layer/range selection")
     J = {layer: lens["J"][layer].to(dev, torch.float32) for layer in LAYERS}
     print(
         f"lens {args.lens} n_prompts={lens['n_prompts']} "
