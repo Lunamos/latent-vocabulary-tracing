@@ -340,39 +340,41 @@ def domain_write_contrasts(
     write_amounts: dict[str, ArrayLike],
     *,
     neutral: str = "neutral",
-    noise_floor: float,
 ) -> dict[str, dict[str, NDArray]]:
-    """Return raw, excess, and scale-free write amounts by probe domain.
+    """Return raw, excess, and bounded specificity by probe domain.
 
-    The log enrichment for domain ``d`` is
-    ``log2((W_d + noise_floor) / (W_neutral + noise_floor))``.  The fixed floor
-    prevents two numerically negligible writes from producing an arbitrarily
-    large ratio.  Raw nats are retained because enrichment is a direction/
-    locality statistic, not a replacement for edit magnitude.
+    Specificity is (W_d - W_neutral) / (W_d + W_neutral) and lies in [-1, 1]
+    for nonnegative write amounts. It is defined as zero when both amounts are
+    zero. Raw nats are retained because a normalized contrast can look large
+    when both writes are negligible.
     """
 
-    if noise_floor <= 0:
-        raise ValueError("noise_floor must be positive")
     if neutral not in write_amounts:
         raise ValueError(f"missing neutral domain {neutral!r}")
 
     raw = {key: np.asarray(value, dtype=np.float64) for key, value in write_amounts.items()}
+    if any(np.any(~np.isfinite(value)) or np.any(value < 0) for value in raw.values()):
+        raise ValueError("write amounts must be finite and nonnegative")
     neutral_value = raw[neutral]
     output: dict[str, dict[str, NDArray]] = {}
     for domain, value in raw.items():
         try:
             excess = value - neutral_value
+            total = value + neutral_value
         except ValueError as exc:
             raise ValueError(
                 f"domain {domain!r} does not broadcast with neutral domain {neutral!r}"
             ) from exc
-        enrichment = np.log2(
-            (value + noise_floor) / (neutral_value + noise_floor)
+        specificity = np.divide(
+            excess,
+            total,
+            out=np.zeros_like(total, dtype=np.float64),
+            where=total > 0,
         )
         output[domain] = {
             "raw": value,
             "excess_over_neutral": excess,
-            "log2_enrichment_over_neutral": enrichment,
+            "normalized_specificity": specificity,
         }
     return output
 

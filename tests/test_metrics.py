@@ -89,26 +89,31 @@ def test_category_statistics_can_show_direction_within_category():
     assert stats["composition"].sum() == pytest.approx(1.0)
 
 
-def test_domain_write_contrasts_keep_raw_values_and_use_fixed_floor():
+def test_domain_write_contrasts_keep_raw_values_and_bound_specificity():
     contrasts = domain_write_contrasts(
-        {"math": np.array([0.05]), "agent": np.array([0.01]), "neutral": np.array([0.0])},
-        noise_floor=0.01,
+        {
+            "math": np.array([0.05]),
+            "agent": np.array([0.01]),
+            "neutral": np.array([0.01]),
+        },
     )
     assert contrasts["math"]["raw"] == pytest.approx(np.array([0.05]))
-    assert contrasts["math"]["excess_over_neutral"] == pytest.approx(np.array([0.05]))
-    assert contrasts["math"]["log2_enrichment_over_neutral"] == pytest.approx(
-        np.array([np.log2(6.0)])
+    assert contrasts["math"]["excess_over_neutral"] == pytest.approx(np.array([0.04]))
+    assert contrasts["math"]["normalized_specificity"] == pytest.approx(
+        np.array([2.0 / 3.0])
     )
-    assert contrasts["neutral"]["log2_enrichment_over_neutral"] == pytest.approx(
+    assert contrasts["neutral"]["normalized_specificity"] == pytest.approx(
         np.array([0.0])
     )
+    zero = domain_write_contrasts({"math": 0.0, "neutral": 0.0})
+    assert zero["math"]["normalized_specificity"] == pytest.approx(0.0)
 
 
 def test_category_and_domain_normalizations_reject_invalid_inputs():
     with pytest.raises(ValueError, match="one entry per vocabulary"):
         category_probability_statistics([0.5, 0.5], [0.4, 0.6], [0])
-    with pytest.raises(ValueError, match="noise_floor"):
-        domain_write_contrasts({"neutral": 0.0}, noise_floor=0.0)
+    with pytest.raises(ValueError, match="nonnegative"):
+        domain_write_contrasts({"math": -0.1, "neutral": 0.0})
 
 
 def test_normalized_depth_uses_completed_block_fraction():
