@@ -36,7 +36,10 @@ def valid_summary() -> dict:
             "role_conditioned": True,
             "top_change_support": "full_vocabulary",
             "top_change_ranking": "net_probability_delta_after_averaging",
-            "representative_layer_rule": "maximum_response_kl_ba_within_depth_summary",
+            "representative_layer_rule": (
+                "maximum_discovery_response_kl_ba_within_depth_summary"
+            ),
+            "token_inference": "discovery_selection_then_heldout_sign_test_bh",
             "taxonomy_hash": "taxonomy",
         },
         "stored_support_dtype": "fp32",
@@ -54,6 +57,10 @@ def valid_summary() -> dict:
             for key in ("a", "b")
         },
         "probe_hash": "probes",
+        "probe_inference_split": {
+            "method": "sha256_rank_balanced_within_domain",
+            "mapping_hash": "split",
+        },
         "analysis_provenance": {
             "revision": "abc123",
             "dirty": False,

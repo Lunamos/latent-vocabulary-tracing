@@ -142,9 +142,14 @@ def validate_summary_contract(
             errors.append("exact token changes are not ranked by net probability change")
         if (
             category.get("representative_layer_rule")
-            != "maximum_response_kl_ba_within_depth_summary"
+            != "maximum_discovery_response_kl_ba_within_depth_summary"
         ):
             errors.append("representative token layer does not follow the frozen peak-KL rule")
+        if (
+            category.get("token_inference")
+            != "discovery_selection_then_heldout_sign_test_bh"
+        ):
+            errors.append("exact token inference lacks discovery/confirmation separation")
     if contract.require_fp32_store:
         stored_dtype = summary.get("stored_support_dtype", summary.get("support_dtype"))
         if stored_dtype != "fp32":
@@ -177,6 +182,11 @@ def validate_summary_contract(
                     errors.append(f"model {model_key!r} lacks provenance field {field!r}")
         if not summary.get("probe_hash"):
             errors.append("probe_hash is absent")
+        split = summary.get("probe_inference_split", {})
+        if split.get("method") != "sha256_rank_balanced_within_domain":
+            errors.append("probe discovery/confirmation split method is absent")
+        if not split.get("mapping_hash"):
+            errors.append("probe discovery/confirmation mapping hash is absent")
         analysis = summary.get("analysis_provenance", {})
         if not analysis.get("revision"):
             errors.append("analysis code revision is absent")

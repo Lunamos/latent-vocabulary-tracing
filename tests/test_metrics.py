@@ -2,13 +2,16 @@ import numpy as np
 import pytest
 
 from latent_vocabulary_tracing.metrics import (
+    benjamini_hochberg,
     category_probability_statistics,
+    deterministic_balanced_split,
     domain_write_contrasts,
     jensen_shannon_from_logits,
     kl_divergence_from_logits,
     log_probability_delta,
     moved_probability_mass,
     normalized_depth,
+    one_sided_sign_test,
     select_normalized_depth_layers,
     topk_jaccard,
     vocabulary_write_amount,
@@ -115,6 +118,25 @@ def test_normalized_depth_uses_completed_block_fraction():
 def test_normalized_depth_selection_rejects_invalid_layers():
     with pytest.raises(ValueError, match="must lie"):
         select_normalized_depth_layers([4], n_layers=4)
+
+
+def test_discovery_confirmation_split_is_balanced_stable_and_salted():
+    keys = [f"probe-{index}" for index in range(9)]
+    first = deterministic_balanced_split(keys, salt="domain-a")
+    repeated = deterministic_balanced_split(list(reversed(keys)), salt="domain-a")
+    other = deterministic_balanced_split(keys, salt="domain-b")
+    assert first == repeated
+    assert list(first.values()).count("discovery") == 5
+    assert list(first.values()).count("confirmation") == 4
+    assert first != other
+
+
+def test_exact_sign_test_and_bh_correction():
+    assert one_sided_sign_test(10, 0, alternative="positive") == pytest.approx(1 / 1024)
+    assert one_sided_sign_test(0, 10, alternative="negative") == pytest.approx(1 / 1024)
+    assert one_sided_sign_test(5, 5, alternative="positive") > 0.5
+    q_values = benjamini_hochberg([0.01, 0.04, 0.03, 0.002])
+    assert q_values == pytest.approx([0.02, 0.04, 0.04, 0.008])
 
 
 def test_direction_alignment_recovers_same_and_opposite_directions():

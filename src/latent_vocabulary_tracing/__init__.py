@@ -2,13 +2,16 @@
 
 from .manifest import PairJob, load_manifest, parse_manifest_line
 from .metrics import (
+    benjamini_hochberg,
     category_probability_statistics,
+    deterministic_balanced_split,
     domain_write_contrasts,
     jensen_shannon_from_logits,
     kl_divergence_from_logits,
     log_probability_delta,
     moved_probability_mass,
     normalized_depth,
+    one_sided_sign_test,
     select_normalized_depth_layers,
     topk_jaccard,
     vocabulary_write_amount,
@@ -27,6 +30,7 @@ from .taxonomy import (
 )
 
 __all__ = [
+    "benjamini_hochberg",
     "CATEGORIES",
     "FUNCTIONAL_CATEGORIES",
     "TRACE_CATEGORIES",
@@ -37,6 +41,7 @@ __all__ = [
     "categorize_trace_token",
     "categorize_token",
     "domain_write_contrasts",
+    "deterministic_balanced_split",
     "jensen_shannon_from_logits",
     "infer_role_spans",
     "is_displayable_trace_token",
@@ -46,6 +51,7 @@ __all__ = [
     "log_probability_delta",
     "moved_probability_mass",
     "normalized_depth",
+    "one_sided_sign_test",
     "parse_manifest_line",
     "topk_jaccard",
     "summary_view",

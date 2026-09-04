@@ -37,6 +37,11 @@ ROOT = os.path.dirname(ZOO)
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
 import latent_vocabulary_tracing.taxonomy as taxonomy_module  # noqa: E402
+from latent_vocabulary_tracing.metrics import (  # noqa: E402
+    benjamini_hochberg,
+    deterministic_balanced_split,
+    one_sided_sign_test,
+)
 from latent_vocabulary_tracing.taxonomy import (  # noqa: E402
     TRACE_CATEGORIES,
     categorize_trace_token,
@@ -285,6 +290,13 @@ kinds = set(args.kinds.split(","))
 probes = [probe for probe in all_probes if probe["kind"] in kinds]
 if args.limit:
     probes = probes[: args.limit]
+probe_splits = {}
+for probe_kind in sorted(kinds):
+    keys = [probe["key"] for probe in all_probes if probe["kind"] == probe_kind]
+    split = deterministic_balanced_split(keys, salt=f"lvt-token-v1:{probe_kind}")
+    probe_splits.update({f"{probe_kind}:{key}": value for key, value in split.items()})
+for probe in probes:
+    probe["inference_split"] = probe_splits[f"{probe['kind']}:{probe['key']}"]
 print(f"{len(probes)} probes, kinds={sorted(kinds)}", flush=True)
 
 category_ids = None
@@ -352,6 +364,96 @@ def token_change_payload(changes, *, include_categories=False):
     return payload
 
 
+def heldout_token_payload(domain, readout, layer):
+    discovery_key = (domain, readout, layer, "discovery")
+    confirmation_key = (domain, readout, layer, "confirmation")
+    n_discovery = token_split_counts.get(discovery_key, 0)
+    n_confirmation = token_split_counts.get(confirmation_key, 0)
+    payload = {
+        "status": "complete" if n_discovery and n_confirmation else "insufficient_split",
+        "discovery_probes": n_discovery,
+        "confirmation_probes": n_confirmation,
+        "test": "one_sided_exact_sign_test",
+        "multiplicity": "benjamini_hochberg_across_displayed_candidates",
+        "q_threshold": 0.05,
+        "displayable_by_category": {},
+    }
+    if not n_discovery or not n_confirmation:
+        return payload
+
+    discovery_mean = token_split_sums[discovery_key] / n_discovery
+    confirmation_sum = token_split_sums[confirmation_key]
+    confirmation_mean = confirmation_sum / n_confirmation
+    confirmation_square_sum = token_split_square_sums[confirmation_key]
+    positive_counts = token_split_positive_counts[confirmation_key]
+    negative_counts = token_split_negative_counts[confirmation_key]
+    candidates = []
+    for category_index, category in enumerate(TRACE_CATEGORIES):
+        mask = displayable_ids & (category_ids_cpu == category_index)
+        payload["displayable_by_category"][category] = {
+            "promoted": [],
+            "suppressed": [],
+        }
+        for label, direction in (("promoted", 1), ("suppressed", -1)):
+            scores = (direction * discovery_mean).masked_fill(~mask, -torch.inf)
+            top_values, top_ids = scores.topk(min(args.top_changes, scores.numel()))
+            for rank, (score, token_id) in enumerate(
+                zip(top_values, top_ids, strict=True), start=1
+            ):
+                if score <= 0:
+                    continue
+                token_id = int(token_id)
+                positive = int(positive_counts[token_id])
+                negative = int(negative_counts[token_id])
+                alternative = "positive" if direction > 0 else "negative"
+                confirmation_value = float(confirmation_mean[token_id])
+                if n_confirmation > 1:
+                    centered_sum = max(
+                        0.0,
+                        float(confirmation_square_sum[token_id])
+                        - float(confirmation_sum[token_id]) ** 2 / n_confirmation,
+                    )
+                    standard_error = (centered_sum / (n_confirmation - 1) / n_confirmation) ** 0.5
+                else:
+                    standard_error = None
+                row = {
+                    "id": token_id,
+                    "token": tok.decode([token_id]),
+                    "discovery_rank": rank,
+                    "discovery_probability_points": 100.0 * float(discovery_mean[token_id]),
+                    "confirmation_probability_points": 100.0 * confirmation_value,
+                    "confirmation_standard_error_points": (
+                        100.0 * standard_error if standard_error is not None else None
+                    ),
+                    "confirmation_positive_probes": positive,
+                    "confirmation_negative_probes": negative,
+                    "confirmation_zero_probes": n_confirmation - positive - negative,
+                    "one_sided_sign_p": one_sided_sign_test(
+                        positive,
+                        negative,
+                        alternative=alternative,
+                    ),
+                    "direction": label,
+                }
+                payload["displayable_by_category"][category][label].append(row)
+                candidates.append(row)
+    q_values = benjamini_hochberg(
+        [candidate["one_sided_sign_p"] for candidate in candidates]
+    )
+    for candidate, q_value in zip(candidates, q_values, strict=True):
+        candidate["bh_q"] = float(q_value)
+        expected_sign = 1 if candidate["direction"] == "promoted" else -1
+        candidate["confirmed"] = bool(
+            q_value <= payload["q_threshold"]
+            and expected_sign * candidate["confirmation_probability_points"] > 0
+        )
+    payload["tested_candidates"] = len(candidates)
+    payload["confirmed_candidates"] = sum(
+        candidate["confirmed"] for candidate in candidates
+    )
+    return payload
+
+
 def summarize_position_metrics(metrics, span, n_pos, prompt_len):
     output = {key: float(metrics[key].mean()) for key in ("kl_ab", "kl_ba", "js")}
     if "jaccard" in metrics:
@@ -387,6 +489,11 @@ def summarize_faithfulness(faith, span, n_pos, prompt_len):
 records, store = [], {}
 token_change_sums = {}
 token_change_counts = {}
+token_split_sums = {}
+token_split_square_sums = {}
+token_split_positive_counts = {}
+token_split_negative_counts = {}
+token_split_counts = {}
 with torch.no_grad():
     for i, p in enumerate(probes):
         ids = tok(
@@ -418,6 +525,7 @@ with torch.no_grad():
         rec = {
             "key": p["key"],
             "kind": p["kind"],
+            "inference_split": p["inference_split"],
             "prompt_len": p["prompt_len"],
             "meta": p["meta"],
             "n_pos": n_pos,
@@ -547,6 +655,33 @@ with torch.no_grad():
                         else:
                             token_change_sums[change_key] += probe_changes
                             token_change_counts[change_key] += 1
+                        split_key = (
+                            p["kind"],
+                            kind,
+                            layer,
+                            p["inference_split"],
+                        )
+                        signed_probe_change = probe_changes[0]
+                        if split_key not in token_split_sums:
+                            token_split_sums[split_key] = signed_probe_change.clone()
+                            token_split_square_sums[split_key] = signed_probe_change.square()
+                            token_split_positive_counts[split_key] = (
+                                signed_probe_change > 0
+                            ).to(torch.int16)
+                            token_split_negative_counts[split_key] = (
+                                signed_probe_change < 0
+                            ).to(torch.int16)
+                            token_split_counts[split_key] = 1
+                        else:
+                            token_split_sums[split_key] += signed_probe_change
+                            token_split_square_sums[split_key] += signed_probe_change.square()
+                            token_split_positive_counts[split_key] += (
+                                signed_probe_change > 0
+                            ).to(torch.int16)
+                            token_split_negative_counts[split_key] += (
+                                signed_probe_change < 0
+                            ).to(torch.int16)
+                            token_split_counts[split_key] += 1
                     rec["role_categories"][kind][str(layer)] = {}
                     role_values = aggregate_category_statistics_by_spans(
                         category_values, p.get("role_spans", {})
@@ -782,12 +917,25 @@ for kind in sorted(kinds):
                 layer
                 for layer in summary_layers
                 if (kind, ro, layer) in token_change_sums
-                and a[ro][str(layer)]["kl_ba_resp"] is not None
+                and any(
+                    r["inference_split"] == "discovery"
+                    and r["per_layer"][ro][str(layer)]["kl_ba_resp"] is not None
+                    for r in rs
+                )
             ]
             if eligible_layers:
+                discovery_response_kl = {
+                    layer: sum(
+                        r["per_layer"][ro][str(layer)]["kl_ba_resp"]
+                        for r in rs
+                        if r["inference_split"] == "discovery"
+                    )
+                    / sum(r["inference_split"] == "discovery" for r in rs)
+                    for layer in eligible_layers
+                }
                 peak_layer = max(
                     eligible_layers,
-                    key=lambda layer: a[ro][str(layer)]["kl_ba_resp"],
+                    key=discovery_response_kl.__getitem__,
                 )
                 peak_changes = (
                     token_change_sums[(kind, ro, peak_layer)]
@@ -801,6 +949,8 @@ for kind in sorted(kinds):
                         "layer": peak_layer,
                         "normalized_depth": (peak_layer + 1) / n_model_layers,
                         "response_kl_ba": a[ro][str(peak_layer)]["kl_ba_resp"],
+                        "discovery_response_kl_ba": discovery_response_kl[peak_layer],
+                        "heldout_inference": heldout_token_payload(kind, ro, peak_layer),
                     }
                 )
                 a["top_token_changes"][ro][
@@ -887,6 +1037,21 @@ summary = {
     "layers": LAYERS,
     "probes": args.probes,
     "probe_hash": sha256_file(args.probes),
+    "probe_inference_split": {
+        "method": "sha256_rank_balanced_within_domain",
+        "salt": "lvt-token-v1:<domain>",
+        "mapping_hash": sha256_json(probe_splits),
+        "counts": {
+            probe_kind: {
+                split: sum(
+                    probe["kind"] == probe_kind and probe["inference_split"] == split
+                    for probe in probes
+                )
+                for split in ("discovery", "confirmation")
+            }
+            for probe_kind in sorted(kinds)
+        },
+    },
     "analysis_provenance": repository_state(),
     "support_k": args.support_k,
     "analysis_dtype": "fp32",
@@ -909,11 +1074,16 @@ summary = {
             "net_probability_delta_after_averaging" if args.category_stats else None
         ),
         "top_change_values": "percentage_points" if args.category_stats else None,
+        "token_inference": (
+            "discovery_selection_then_heldout_sign_test_bh"
+            if args.category_stats
+            else None
+        ),
         "depth_summary": (
             {"minimum": 0.50, "maximum": 0.85} if args.category_stats else None
         ),
         "representative_layer_rule": (
-            "maximum_response_kl_ba_within_depth_summary"
+            "maximum_discovery_response_kl_ba_within_depth_summary"
             if args.category_stats
             else None
         ),

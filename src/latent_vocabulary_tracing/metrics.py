@@ -6,6 +6,9 @@ explicit. This module intentionally has no model-loading or filesystem logic.
 
 from __future__ import annotations
 
+import hashlib
+import math
+
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
@@ -38,6 +41,69 @@ def select_normalized_depth_layers(
         raise ValueError(f"layers must lie in [0, {n_layers})")
     depths = (values.astype(np.float64) + 1.0) / n_layers
     return values[(depths >= lower) & (depths <= upper)]
+
+
+def deterministic_balanced_split(
+    keys: list[str] | tuple[str, ...],
+    *,
+    salt: str = "lvt-discovery-confirmation-v1",
+) -> dict[str, str]:
+    """Assign unique keys reproducibly to near-equal discovery/confirmation sets."""
+
+    if not keys:
+        raise ValueError("keys cannot be empty")
+    if len(set(keys)) != len(keys):
+        raise ValueError("keys must be unique")
+    ranked = sorted(
+        keys,
+        key=lambda key: hashlib.sha256(f"{salt}\0{key}".encode()).digest(),
+    )
+    cut = (len(ranked) + 1) // 2
+    return {
+        key: "discovery" if index < cut else "confirmation"
+        for index, key in enumerate(ranked)
+    }
+
+
+def one_sided_sign_test(
+    positive_count: int,
+    negative_count: int,
+    *,
+    alternative: str,
+) -> float:
+    """Exact one-sided sign-test p-value, ignoring zero observations."""
+
+    if positive_count < 0 or negative_count < 0:
+        raise ValueError("sign counts must be non-negative")
+    if alternative not in {"positive", "negative"}:
+        raise ValueError("alternative must be 'positive' or 'negative'")
+    n = positive_count + negative_count
+    if n == 0:
+        return 1.0
+    if alternative == "positive":
+        tail = range(positive_count, n + 1)
+    else:
+        tail = range(0, positive_count + 1)
+    return min(1.0, sum(math.comb(n, value) for value in tail) / (2**n))
+
+
+def benjamini_hochberg(p_values: ArrayLike) -> NDArray:
+    """Return Benjamini--Hochberg adjusted q-values in original order."""
+
+    values = np.asarray(p_values, dtype=np.float64)
+    if values.ndim != 1:
+        raise ValueError("p_values must be one-dimensional")
+    if np.any(~np.isfinite(values)) or np.any((values < 0) | (values > 1)):
+        raise ValueError("p_values must be finite and lie in [0, 1]")
+    if not len(values):
+        return values.copy()
+    order = np.argsort(values, kind="stable")
+    ranked = values[order]
+    adjusted = ranked * len(values) / np.arange(1, len(values) + 1)
+    adjusted = np.minimum.accumulate(adjusted[::-1])[::-1]
+    output = np.empty_like(adjusted)
+    output[order] = np.minimum(adjusted, 1.0)
+    return output
 
 
 def _as_matching_float_arrays(a: ArrayLike, b: ArrayLike) -> tuple[NDArray, NDArray]:
