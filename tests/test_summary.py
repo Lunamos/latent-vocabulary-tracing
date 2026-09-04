@@ -60,7 +60,9 @@ def valid_summary() -> dict:
                 "n_layers": 5,
                 "vocab_size": 16,
                 "norm_type": "RMSNorm",
+                "rope": {"rope_type": "default"},
                 "config_hash": f"config-{key}",
+                "config_hash_scheme": "canonical_model_config_v1",
             }
             for key in ("a", "b")
         },
@@ -78,6 +80,7 @@ def valid_summary() -> dict:
             "id_piece_mismatches": 0,
             "tokenizer_hash_a": "tokenizer",
             "tokenizer_hash_b": "tokenizer",
+            "tokenizer_hash_scheme": "sha256_canonical_json_v1",
         },
         "direction_statistics": {
             "quantity": "delta_logp",
@@ -119,6 +122,16 @@ def test_jlens_contract_requires_named_matching_parent_and_geometry():
     summary["lens_parent_id"] = "org/unrelated"
     with pytest.raises(ValueError, match="does not match model_a"):
         validate_summary_contract(summary, SummaryContract(readout="J"))
+
+
+def test_contract_rejects_architecture_or_full_vocabulary_mismatch():
+    summary = valid_summary()
+    summary["models"]["b"]["rope"] = {"rope_type": "modified"}
+    summary["tokenizer_note"]["tokenizer_hash_b"] = "another-tokenizer"
+    with pytest.raises(ValueError, match="architecture field 'rope'"):
+        validate_summary_contract(summary, SummaryContract(readout="LL"))
+    with pytest.raises(ValueError, match="full tokenizer vocabularies differ"):
+        validate_summary_contract(summary, SummaryContract(readout="LL"))
 
 
 def test_contract_checks_directed_response_kl_in_four_cell_output():

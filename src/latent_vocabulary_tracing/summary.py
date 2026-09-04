@@ -28,6 +28,7 @@ class SummaryContract:
     require_four_cell: bool = True
     require_role_metrics: bool = True
     require_provenance: bool = True
+    require_matched_architecture: bool = True
     require_category_statistics: bool = False
     require_fp32_store: bool = False
 
@@ -191,6 +192,19 @@ def validate_summary_contract(
             ):
                 if model.get(field) in (None, ""):
                     errors.append(f"model {model_key!r} lacks provenance field {field!r}")
+            if model.get("config_hash_scheme") != "canonical_model_config_v1":
+                errors.append(f"model {model_key!r} uses an unknown config hash scheme")
+        if contract.require_matched_architecture:
+            for field in (
+                "architecture",
+                "hidden_size",
+                "n_layers",
+                "vocab_size",
+                "norm_type",
+                "rope",
+            ):
+                if models.get("a", {}).get(field) != models.get("b", {}).get(field):
+                    errors.append(f"parent and descendant differ on architecture field {field!r}")
         if not summary.get("probe_hash"):
             errors.append("probe_hash is absent")
         split = summary.get("probe_inference_split", {})
@@ -211,6 +225,10 @@ def validate_summary_contract(
         for field in ("tokenizer_hash_a", "tokenizer_hash_b"):
             if not tokenizer.get(field):
                 errors.append(f"tokenizer provenance field {field!r} is absent")
+        if tokenizer.get("tokenizer_hash_scheme") != "sha256_canonical_json_v1":
+            errors.append("tokenizer hash scheme is absent or unknown")
+        if tokenizer.get("tokenizer_hash_a") != tokenizer.get("tokenizer_hash_b"):
+            errors.append("parent and descendant full tokenizer vocabularies differ")
         if contract.readout == "J":
             if not summary.get("lens_hash"):
                 errors.append("Jlens hash is absent")

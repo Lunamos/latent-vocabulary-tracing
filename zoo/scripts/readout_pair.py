@@ -258,6 +258,7 @@ tok_note = {
     "only_b_examples": sorted(set(vb) - set(va))[:20],
     "tokenizer_hash_a": sha256_json(va),
     "tokenizer_hash_b": sha256_json(vb),
+    "tokenizer_hash_scheme": "sha256_canonical_json_v1",
 }
 print(f"models loaded ({time.time() - t0:.0f}s) tokenizer note: {tok_note}", flush=True)
 
@@ -1040,6 +1041,7 @@ def model_metadata(identity, load_source, model):
         "norm_type": type(norm).__name__,
         "rope": rope,
         "config_hash": model_config_hash(config.to_dict()),
+        "config_hash_scheme": "canonical_model_config_v1",
     }
 
 
