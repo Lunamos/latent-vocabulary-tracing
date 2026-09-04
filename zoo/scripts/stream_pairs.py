@@ -68,14 +68,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--contract-readout", choices=("J", "LL"))
     parser.add_argument("--require-categories", action="store_true")
     parser.add_argument("--require-fp32-store", action="store_true")
+    parser.add_argument("--expected-probes-per-domain", type=int)
     parser.add_argument(
         "--edge-registry",
         type=Path,
         help="validate every manifest edge and bind its content hash into each summary",
     )
     args = parser.parse_args()
-    if (args.require_categories or args.require_fp32_store) and not args.contract_readout:
+    if (
+        args.require_categories
+        or args.require_fp32_store
+        or args.expected_probes_per_domain
+    ) and not args.contract_readout:
         parser.error("contract requirements need --contract-readout")
+    if args.expected_probes_per_domain is not None and args.expected_probes_per_domain <= 0:
+        parser.error("--expected-probes-per-domain must be positive")
     if args.min_free <= 0:
         parser.error("--min-free must be positive")
     if args.poll_seconds <= 0:
@@ -264,6 +271,7 @@ def validate_result(path: Path, args: argparse.Namespace) -> None:
         readout=args.contract_readout,
         require_category_statistics=args.require_categories,
         require_fp32_store=args.require_fp32_store,
+        expected_probes_per_domain=args.expected_probes_per_domain,
         require_edge_registry=args.edge_registry is not None,
         edge_registry_hash=getattr(args, "edge_registry_hash", None),
     )

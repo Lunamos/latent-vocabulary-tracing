@@ -35,6 +35,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     summary.add_argument("--require-categories", action="store_true")
     summary.add_argument("--require-fp32-store", action="store_true")
+    summary.add_argument("--expected-probes-per-domain", type=int)
     summary.add_argument(
         "--edge-registry",
         help="also require the summary to be bound to this exact registry content",
@@ -65,7 +66,10 @@ def main(argv: Sequence[str] | None = None) -> None:
         return
     if args.command == "summary":
         if (
-            args.require_categories or args.require_fp32_store or args.edge_registry
+            args.require_categories
+            or args.require_fp32_store
+            or args.expected_probes_per_domain is not None
+            or args.edge_registry
         ) and not args.contract_readout:
             raise SystemExit("--require-* and --edge-registry need --contract-readout")
         registry = load_edge_registry(args.edge_registry) if args.edge_registry else None
@@ -74,6 +78,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 readout=args.contract_readout,
                 require_category_statistics=args.require_categories,
                 require_fp32_store=args.require_fp32_store,
+                expected_probes_per_domain=args.expected_probes_per_domain,
                 require_edge_registry=registry is not None,
                 edge_registry_hash=registry.digest if registry else None,
             )

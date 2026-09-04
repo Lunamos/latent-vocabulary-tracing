@@ -33,6 +33,7 @@ class SummaryContract:
     require_fp32_store: bool = False
     require_edge_registry: bool = False
     require_chat_matched_neutral: bool = True
+    expected_probes_per_domain: int | None = None
     edge_registry_hash: str | None = None
 
     def __post_init__(self) -> None:
@@ -40,6 +41,11 @@ class SummaryContract:
             raise ValueError("readout must be 'J' (Jlens) or 'LL'")
         if not self.domains:
             raise ValueError("domains cannot be empty")
+        if (
+            self.expected_probes_per_domain is not None
+            and self.expected_probes_per_domain <= 0
+        ):
+            raise ValueError("expected_probes_per_domain must be positive")
 
 
 def load_summary(
@@ -89,6 +95,14 @@ def validate_summary_contract(
             if not isinstance(domain_result, dict):
                 errors.append(f"domain {domain!r} is absent")
                 continue
+            if (
+                contract.expected_probes_per_domain is not None
+                and domain_result.get("n") != contract.expected_probes_per_domain
+            ):
+                errors.append(
+                    f"domain {domain!r} has n={domain_result.get('n')!r}, "
+                    f"need {contract.expected_probes_per_domain}"
+                )
             readout_result = domain_result.get(contract.readout)
             if not isinstance(readout_result, dict):
                 errors.append(f"domain {domain!r} lacks readout {contract.readout!r}")
@@ -155,6 +169,25 @@ def validate_summary_contract(
                 errors.append(
                     f"{field}={probe_protocol.get(field)!r}, need {expected!r}"
                 )
+
+    if contract.expected_probes_per_domain is not None:
+        records = summary.get("records")
+        if not isinstance(records, list):
+            errors.append("per-probe records are absent")
+        else:
+            keys = [record.get("key") for record in records if isinstance(record, dict)]
+            if len(keys) != len(set(keys)):
+                errors.append("per-probe record keys are not unique")
+            for domain in contract.domains:
+                count = sum(
+                    isinstance(record, dict) and record.get("kind") == domain
+                    for record in records
+                )
+                if count != contract.expected_probes_per_domain:
+                    errors.append(
+                        f"records contain {count} {domain!r} probes, "
+                        f"need {contract.expected_probes_per_domain}"
+                    )
 
     if contract.require_edge_registry or contract.edge_registry_hash is not None:
         binding = summary.get("edge_registry", {})

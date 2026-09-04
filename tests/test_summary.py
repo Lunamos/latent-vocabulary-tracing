@@ -13,6 +13,7 @@ def valid_summary() -> dict:
     domains = {}
     for domain in ("math", "code", "agent", "neutral"):
         domains[domain] = {
+            "n": 1,
             "LL": {"4": {"kl_ba_resp": 0.2}},
             "role_metrics": {"LL": {"4": {"model_response": {"kl_ba": 0.2}}}},
             "four_cell": {
@@ -113,6 +114,10 @@ def valid_summary() -> dict:
             "support_coverage_reported": True,
         },
         "agg": domains,
+        "records": [
+            {"key": f"{domain}-0", "kind": domain}
+            for domain in ("math", "code", "agent", "neutral")
+        ],
     }
 
 
@@ -146,6 +151,20 @@ def test_contract_rejects_pseudoreplicated_neutral_documents():
     summary["probe_protocol"]["neutral_source_document_count"] = 1
     with pytest.raises(ValueError, match="document_count"):
         validate_summary_contract(summary, SummaryContract(readout="LL"))
+
+
+def test_contract_can_require_complete_per_domain_probe_records():
+    validate_summary_contract(
+        valid_summary(),
+        SummaryContract(readout="LL", expected_probes_per_domain=1),
+    )
+    summary = valid_summary()
+    summary["records"].pop()
+    with pytest.raises(ValueError, match="records contain 0 'neutral'"):
+        validate_summary_contract(
+            summary,
+            SummaryContract(readout="LL", expected_probes_per_domain=1),
+        )
 
 
 def test_jlens_contract_requires_named_matching_parent_and_geometry():

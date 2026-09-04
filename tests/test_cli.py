@@ -49,3 +49,8 @@ def test_manifest_cli_rejects_registry_identity_drift(tmp_path):
 
     with pytest.raises(ValueError, match="identity mismatch"):
         main(["manifest", "check", str(manifest), "--edge-registry", str(registry)])
+
+
+def test_summary_probe_count_requirement_needs_a_contract():
+    with pytest.raises(SystemExit, match="need --contract-readout"):
+        main(["summary", "missing.json", "--expected-probes-per-domain", "30"])
