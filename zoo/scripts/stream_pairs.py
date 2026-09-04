@@ -1,133 +1,342 @@
-"""Disk-bounded pair readouts: for each job line `TAG | A | B | extra`, download A and B (spec = repo[@revision][::subdir]
-or local path), run readout_pair.py, then delete B's weights unless its repo is listed in --keep (A is never deleted here).
-Usage: CUDA_VISIBLE_DEVICES=g python stream_pairs.py JOBS [--keep repo1,repo2] [--min_free 25]
-Markers: zoo/logs/ro_<TAG>.DONE/.FAIL (skip if present); zoo/logs/stream_pairs.log
+"""Disk-bounded, contract-aware runner for paired checkpoint readouts.
+
+Each manifest row is ``TAG | PARENT | DESCENDANT | EXTRA``. Remote model
+specifications may use ``repo[@revision][::subdir]``. We load from downloaded
+paths but pass the original model identities to ``readout_pair.py`` so result
+provenance never degrades into a machine-local cache path.
 """
-import argparse, os, sys, shutil, subprocess, sys, time, glob
-os.environ.setdefault("HF_HOME", os.environ.get("HF_HOME", "/localscratch/zjin350/hf_cache"))
-from huggingface_hub import snapshot_download
-ZOO = os.environ.get("ZOO", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))); LOG = f"{ZOO}/logs"; HF = os.environ["HF_HOME"] + "/hub"
-PY = os.environ.get("ZOO_PY", sys.executable)
-ap = argparse.ArgumentParser(); ap.add_argument("jobs"); ap.add_argument("--keep", default=""); ap.add_argument("--min_free", type=float, default=25)
-args = ap.parse_args(); keep = set(x for x in args.keep.split(",") if x)
-ALLOW = ["*.safetensors", "*.json", "*.txt", "*.jinja", "*.model", "*.py", "*.tiktoken"]
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+os.environ.setdefault("HF_HOME", "/localscratch/zjin350/hf_cache")
+
+from huggingface_hub import snapshot_download  # noqa: E402, I001
 
 
-def log(m):
-    line = f"{time.strftime('%F %T')} [gpu{os.environ.get('CUDA_VISIBLE_DEVICES','?')}] {m}"; print(line, flush=True)
-    open(f"{LOG}/stream_pairs.log", "a").write(line + "\n")
+ZOO = Path(os.environ.get("ZOO", Path(__file__).resolve().parents[1])).resolve()
+ROOT = ZOO.parent
+LOG = ZOO / "logs"
+RESULTS = ZOO / "results"
+HF_HUB = Path(os.environ["HF_HOME"]) / "hub"
+PYTHON = os.environ.get("ZOO_PY", sys.executable)
+ALLOW = ("*.safetensors", "*.json", "*.txt", "*.jinja", "*.model", "*.py", "*.tiktoken")
+
+sys.path.insert(0, str(ROOT / "src"))
+
+from latent_vocabulary_tracing.manifest import atomic_claim, load_manifest  # noqa: E402
+from latent_vocabulary_tracing.summary import SummaryContract, load_summary  # noqa: E402
 
 
-def try_claim(tag):
-    """Atomically claim a tag so several GPU workers can share one queue."""
-    path = f"{LOG}/ro_{tag}.CLAIM"
+@dataclass(frozen=True)
+class ModelSpec:
+    original: str
+    repository: str | None
+    revision: str | None
+    subdirectory: str | None
+    identity: str
+
+
+@dataclass(frozen=True)
+class FetchedModel:
+    path: Path
+    spec: ModelSpec
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("jobs", type=Path)
+    parser.add_argument("--keep", default="")
+    parser.add_argument(
+        "--min-free",
+        type=float,
+        default=60,
+        help="minimum free GPU memory in GiB before loading a pair",
+    )
+    parser.add_argument("--poll-seconds", type=int, default=60)
+    parser.add_argument("--retry-failed", action="store_true")
+    parser.add_argument("--contract-readout", choices=("J", "LL"))
+    parser.add_argument("--require-categories", action="store_true")
+    parser.add_argument("--require-fp32-store", action="store_true")
+    args = parser.parse_args()
+    if (args.require_categories or args.require_fp32_store) and not args.contract_readout:
+        parser.error("contract requirements need --contract-readout")
+    if args.min_free <= 0:
+        parser.error("--min-free must be positive")
+    if args.poll_seconds <= 0:
+        parser.error("--poll-seconds must be positive")
+    return args
+
+
+def log(message: str) -> None:
+    LOG.mkdir(parents=True, exist_ok=True)
+    line = (
+        f"{time.strftime('%F %T')} "
+        f"[gpu{os.environ.get('CUDA_VISIBLE_DEVICES', '?')}] {message}"
+    )
+    print(line, flush=True)
+    with (LOG / "stream_pairs.log").open("a", encoding="utf-8") as handle:
+        handle.write(line + "\n")
+
+
+def parse_model_spec(value: str) -> ModelSpec:
+    if Path(value).is_dir():
+        return ModelSpec(value, None, None, None, value)
+    repository_revision, separator, subdirectory = value.partition("::")
+    repository, revision_separator, revision = repository_revision.partition("@")
+    subdirectory = subdirectory if separator else None
+    revision = revision if revision_separator else None
+    identity = repository + (f"::{subdirectory}" if subdirectory else "")
+    return ModelSpec(value, repository, revision, subdirectory, identity)
+
+
+def gpu_free_gib() -> float:
+    gpu = (os.environ.get("CUDA_VISIBLE_DEVICES") or "0").split(",")[0]
     try:
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
-    except FileExistsError:
-        return None
-    with os.fdopen(fd, "w") as f:
-        f.write(f"pid={os.getpid()} gpu={os.environ.get('CUDA_VISIBLE_DEVICES', '?')} time={time.strftime('%F %T')}\n")
-    return path
+        output = subprocess.check_output(
+            [
+                "nvidia-smi",
+                "-i",
+                gpu,
+                "--query-gpu=memory.free",
+                "--format=csv,noheader,nounits",
+            ],
+            text=True,
+        )
+        return float(output.strip()) / 1024
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return 0.0
 
 
-def wait_gpu(min_free_gb=60):
-    """GPUs are shared with other jobs: block until CUDA_VISIBLE_DEVICES has enough free memory for two 8B models."""
-    gid = (os.environ.get("CUDA_VISIBLE_DEVICES") or "0").split(",")[0]
+def wait_for_gpu(minimum_gib: float, poll_seconds: int) -> None:
     while True:
-        try:
-            free = float(subprocess.check_output(["nvidia-smi", "-i", gid, "--query-gpu=memory.free", "--format=csv,noheader,nounits"]).decode()) / 1024
-        except Exception:
-            free = 0
-        if free >= min_free_gb: return
-        log(f"waiting for GPU{gid} memory ({free:.0f}G free < {min_free_gb}G)"); time.sleep(120)
+        free = gpu_free_gib()
+        if free >= minimum_gib:
+            return
+        log(f"waiting for GPU memory ({free:.0f} GiB free < {minimum_gib:.0f} GiB)")
+        time.sleep(poll_seconds)
 
 
-def sanitize_config(path):
-    """Some released configs store integer fields as floats (e.g. max_position_embeddings: 163840.0); transformers 5 rejects them."""
-    import json as _json
-    cfg = os.path.join(path, "config.json")
-    if not os.path.isfile(cfg): return
+def wait_for_disk(minimum_gib: float, poll_seconds: int) -> None:
+    while True:
+        free = shutil.disk_usage(ZOO).free / 2**30
+        if free >= minimum_gib:
+            return
+        log(f"waiting for disk ({free:.0f} GiB free < {minimum_gib:.0f} GiB)")
+        time.sleep(max(poll_seconds, 60))
+
+
+def sanitize_config(path: Path) -> None:
+    """Repair released configs that encode integral architecture fields as floats."""
+
+    config_path = path / "config.json"
+    if not config_path.is_file():
+        return
     try:
-        d = _json.load(open(cfg))
-    except Exception:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
         return
     changed = False
-    def fix(o):
+
+    def fix(value: object) -> None:
         nonlocal changed
-        if isinstance(o, dict):
-            for k, v in o.items():
-                if isinstance(v, float) and v.is_integer() and any(s in k for s in ("position", "size", "layers", "heads", "dim", "vocab", "token_id", "window", "length")):
-                    o[k] = int(v); changed = True
-                else: fix(v)
-        elif isinstance(o, list):
-            for v in o: fix(v)
-    fix(d)
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if (
+                    isinstance(item, float)
+                    and item.is_integer()
+                    and any(
+                        fragment in key
+                        for fragment in (
+                            "position",
+                            "size",
+                            "layers",
+                            "heads",
+                            "dim",
+                            "vocab",
+                            "token_id",
+                            "window",
+                            "length",
+                        )
+                    )
+                ):
+                    value[key] = int(item)
+                    changed = True
+                else:
+                    fix(item)
+        elif isinstance(value, list):
+            for item in value:
+                fix(item)
+
+    fix(config)
     if changed:
-        os.chmod(cfg, 0o644); _json.dump(d, open(cfg, "w"), indent=2); log(f"sanitized integral floats in {cfg}")
+        config_path.chmod(0o644)
+        config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+        log(f"sanitized integral floats in {config_path}")
 
 
-def fetch(spec):
-    if os.path.isdir(spec): return spec, None
-    repo, sub = (spec.split("::") + [None])[:2]
-    repo, rev = (repo.split("@") + [None])[:2]
-    while shutil.disk_usage(ZOO).free / 2**30 < args.min_free:
-        log(f"waiting for disk ({shutil.disk_usage(ZOO).free/2**30:.0f}G free)"); time.sleep(300)
-    for attempt in range(3):
+def fetch(spec: ModelSpec, minimum_disk_gib: float, poll_seconds: int) -> FetchedModel | None:
+    if spec.repository is None:
+        return FetchedModel(Path(spec.original).resolve(), spec)
+    wait_for_disk(minimum_disk_gib, poll_seconds)
+    for attempt in range(1, 4):
         try:
-            allow = [f"{sub}/{p}" for p in ALLOW] + ["*.json", "*.txt", "*.jinja"] if sub else ALLOW
-            p = snapshot_download(repo, revision=rev, allow_patterns=allow, max_workers=8)
-            if sub and not os.path.exists(os.path.join(p, sub, "config.json")):
-                for f in glob.glob(f"{p}/*.json") + glob.glob(f"{p}/*.txt") + glob.glob(f"{p}/*.jinja"):
-                    if not os.path.exists(os.path.join(p, sub, os.path.basename(f))): shutil.copy(f, os.path.join(p, sub))
-            sanitize_config(os.path.join(p, sub) if sub else p)
-            return (os.path.join(p, sub) if sub else p), repo
-        except Exception as e:
-            log(f"download error {spec}: {type(e).__name__} {str(e)[:150]}"); time.sleep(60)
-    return None, repo
+            if spec.subdirectory:
+                allow_patterns = [f"{spec.subdirectory}/{pattern}" for pattern in ALLOW]
+                allow_patterns.extend(("*.json", "*.txt", "*.jinja"))
+            else:
+                allow_patterns = list(ALLOW)
+            snapshot = Path(
+                snapshot_download(
+                    spec.repository,
+                    revision=spec.revision,
+                    allow_patterns=allow_patterns,
+                    max_workers=8,
+                )
+            )
+            path = snapshot / spec.subdirectory if spec.subdirectory else snapshot
+            if spec.subdirectory and not (path / "config.json").is_file():
+                path.mkdir(parents=True, exist_ok=True)
+                for pattern in ("*.json", "*.txt", "*.jinja"):
+                    for source in snapshot.glob(pattern):
+                        destination = path / source.name
+                        if not destination.exists():
+                            shutil.copy(source, destination)
+            sanitize_config(path)
+            return FetchedModel(path, spec)
+        except Exception as error:  # network/model repositories fail heterogeneously
+            log(
+                f"download attempt {attempt}/3 failed for {spec.original}: "
+                f"{type(error).__name__}: {str(error)[:180]}"
+            )
+            if attempt < 3:
+                time.sleep(60)
+    return None
 
 
-def delete(path, repo):
-    if repo is None or repo in keep: return
-    # revision snapshot dir: delete just that snapshot (other revisions untouched); subfolder: delete subfolder
-    target = path if "/snapshots/" in path else path
-    sz = sum(os.path.getsize(f) for f in glob.glob(f"{target}/**/*", recursive=True) if os.path.isfile(f)) / 2**30
-    shutil.rmtree(target, ignore_errors=True)
-    # also drop the blobs that are now orphaned (revision snapshots symlink into blobs/)
-    root = f"{HF}/models--{repo.replace('/', '--')}"
-    linked = set()
-    for f in glob.glob(f"{root}/snapshots/**/*", recursive=True):
-        if os.path.islink(f): linked.add(os.path.realpath(f))
-    for b in glob.glob(f"{root}/blobs/*"):
-        if os.path.realpath(b) not in linked:
-            try: os.remove(b)
-            except OSError: pass
-    log(f"deleted {target} ({sz:.1f}G); free={shutil.disk_usage(ZOO).free/2**30:.0f}G")
+def delete_download(model: FetchedModel, keep: set[str]) -> None:
+    repository = model.spec.repository
+    if repository is None or repository in keep:
+        return
+    target = model.path
+    if not target.exists():
+        return
+    size_gib = sum(
+        path.stat().st_size
+        for path in target.rglob("*")
+        if path.is_file() and not path.is_symlink()
+    ) / 2**30
+    shutil.rmtree(target)
+
+    repository_root = HF_HUB / f"models--{repository.replace('/', '--')}"
+    linked = {
+        path.resolve()
+        for path in (repository_root / "snapshots").glob("**/*")
+        if path.is_symlink()
+    }
+    for blob in (repository_root / "blobs").glob("*"):
+        if blob.resolve() not in linked:
+            blob.unlink(missing_ok=True)
+    log(f"deleted downloaded descendant {target} ({size_gib:.1f} GiB)")
 
 
-for raw in open(args.jobs):
-    raw = raw.split("#")[0].strip()
-    if not raw: continue
-    parts = [x.strip() for x in raw.split("|")]; tag, a, b = parts[:3]; extra = parts[3] if len(parts) > 3 else ""
-    if os.path.exists(f"{LOG}/ro_{tag}.DONE") or os.path.exists(f"{LOG}/ro_{tag}.FAIL"): continue
-    # Wait before claiming: a worker on a busy GPU must not reserve work that an
-    # idle GPU could execute. Recheck completion after the wait for long queues.
-    wait_gpu()
-    if os.path.exists(f"{LOG}/ro_{tag}.DONE") or os.path.exists(f"{LOG}/ro_{tag}.FAIL"): continue
-    claim = try_claim(tag)
-    if claim is None: continue
-    try:
-        pa, ra = fetch(a); pb, rb = fetch(b)
-        if pa is None or pb is None:
-            log(f"SKIP {tag}: download failed")
-            continue
-        # The GPU may have become busy while weights were downloading.
-        wait_gpu()
-        log(f"START {tag}: {a} vs {b}")
-        rc = subprocess.call(f"{PY} {ZOO}/scripts/readout_pair.py '{pa}' '{pb}' {tag} {extra} > {LOG}/ro_{tag}.log 2>&1", shell=True, cwd=ZOO)
-        ok = rc == 0 and os.path.exists(f"{ZOO}/results/ro_{tag}_summary.json")
-        open(f"{LOG}/ro_{tag}.{'DONE' if ok else 'FAIL'}", "w").write(f"rc={rc}\n"); log(f"{'DONE' if ok else 'FAIL'} {tag} rc={rc}")
-        delete(pb, rb)
-    finally:
-        try: os.remove(claim)
-        except FileNotFoundError: pass
-log("jobs exhausted")
+def validate_result(path: Path, args: argparse.Namespace) -> None:
+    if not args.contract_readout:
+        if not path.is_file():
+            raise ValueError("summary file was not written")
+        return
+    contract = SummaryContract(
+        readout=args.contract_readout,
+        require_category_statistics=args.require_categories,
+        require_fp32_store=args.require_fp32_store,
+    )
+    load_summary(path, contract=contract)
+
+
+def write_marker(path: Path, *, return_code: int, detail: str = "") -> None:
+    temporary = path.with_name(f"{path.name}.tmp.{os.getpid()}")
+    temporary.write_text(f"rc={return_code}\n{detail}", encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def run_job(job, args: argparse.Namespace, keep: set[str]) -> None:
+    done = LOG / f"ro_{job.tag}.DONE"
+    failed = LOG / f"ro_{job.tag}.FAIL"
+    if done.exists() or (failed.exists() and not args.retry_failed):
+        return
+    wait_for_gpu(args.min_free, args.poll_seconds)
+    if done.exists() or (failed.exists() and not args.retry_failed):
+        return
+
+    with atomic_claim(LOG, f"ro_{job.tag}") as claim:
+        if claim is None:
+            return
+        if args.retry_failed:
+            failed.unlink(missing_ok=True)
+        parent = fetch(parse_model_spec(job.parent), args.min_free, args.poll_seconds)
+        descendant = fetch(parse_model_spec(job.descendant), args.min_free, args.poll_seconds)
+        if parent is None or descendant is None:
+            write_marker(failed, return_code=1, detail="download failed\n")
+            log(f"FAIL {job.tag}: download failed")
+            return
+
+        wait_for_gpu(args.min_free, args.poll_seconds)
+        summary = RESULTS / f"ro_{job.tag}_summary.json"
+        command = [
+            PYTHON,
+            str(ZOO / "scripts" / "readout_pair.py"),
+            str(parent.path),
+            str(descendant.path),
+            job.tag,
+            "--model-a-id",
+            parent.spec.identity,
+            "--model-b-id",
+            descendant.spec.identity,
+            *job.extra_args,
+        ]
+        log(f"START {job.tag}: {job.parent} vs {job.descendant}")
+        job_log = LOG / f"ro_{job.tag}.log"
+        with job_log.open("w", encoding="utf-8") as handle:
+            completed = subprocess.run(
+                command,
+                cwd=ZOO,
+                stdout=handle,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+        detail = ""
+        valid = False
+        if completed.returncode == 0:
+            try:
+                validate_result(summary, args)
+                valid = True
+            except (OSError, ValueError) as error:
+                detail = f"contract error: {error}\n"
+                log(f"contract failure for {job.tag}: {error}")
+        marker = done if valid else failed
+        write_marker(marker, return_code=completed.returncode, detail=detail)
+        log(f"{'DONE' if valid else 'FAIL'} {job.tag} rc={completed.returncode}")
+        delete_download(descendant, keep)
+
+
+def main() -> None:
+    args = parse_args()
+    LOG.mkdir(parents=True, exist_ok=True)
+    RESULTS.mkdir(parents=True, exist_ok=True)
+    keep = {value for value in args.keep.split(",") if value}
+    for job in load_manifest(args.jobs):
+        run_job(job, args, keep)
+    log("jobs exhausted")
+
+
+if __name__ == "__main__":
+    main()

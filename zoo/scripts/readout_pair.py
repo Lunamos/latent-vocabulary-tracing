@@ -67,6 +67,10 @@ ap = argparse.ArgumentParser()
 ap.add_argument("model_a")
 ap.add_argument("model_b")
 ap.add_argument("tag")
+ap.add_argument("--model-a-id", default="", help="reported parent identity when loading locally")
+ap.add_argument(
+    "--model-b-id", default="", help="reported descendant identity when loading locally"
+)
 ap.add_argument("--lens", default=f"{ROOT}/repro/lenses/base_merged.pt")
 ap.add_argument("--probes", default=f"{ZOO}/data/probes.jsonl")
 ap.add_argument("--out", default=f"{ZOO}/results")
@@ -126,6 +130,8 @@ ap.add_argument(
     help="decode each model natively (legacy) or decode both states with model A",
 )
 args = ap.parse_args()
+model_a_id = args.model_a_id or args.model_a
+model_b_id = args.model_b_id or args.model_b
 dev = "cuda:0"
 t0 = time.time()
 
@@ -1014,13 +1020,13 @@ def checkpoint_revision(name, model):
     return None
 
 
-def model_metadata(name, model):
+def model_metadata(identity, load_source, model):
     config = text_config(model)
     _, layers, norm, _ = _parts(model)
     rope = getattr(config, "rope_scaling", None) or getattr(config, "rope_parameters", None)
     return {
-        "id": name,
-        "revision": checkpoint_revision(name, model),
+        "id": identity,
+        "revision": checkpoint_revision(load_source, model),
         "architecture": type(model).__name__,
         "hidden_size": int(config.hidden_size),
         "n_layers": len(layers),
@@ -1033,11 +1039,11 @@ def model_metadata(name, model):
 
 summary = {
     "schema_version": 2,
-    "model_a": args.model_a,
-    "model_b": args.model_b,
+    "model_a": model_a_id,
+    "model_b": model_b_id,
     "models": {
-        "a": model_metadata(args.model_a, model_a),
-        "b": model_metadata(args.model_b, model_b),
+        "a": model_metadata(model_a_id, args.model_a, model_a),
+        "b": model_metadata(model_b_id, args.model_b, model_b),
     },
     "tag": args.tag,
     "lens": args.lens if J is not None else None,
@@ -1131,8 +1137,8 @@ if not args.no_store:
             "records": records,
             "store": store,
             "layers": LAYERS,
-            "model_a": args.model_a,
-            "model_b": args.model_b,
+            "model_a": model_a_id,
+            "model_b": model_b_id,
             "lens": args.lens if J is not None else None,
             "decoder_mode": summary["decoder_mode"],
             "schema_version": summary["schema_version"],
