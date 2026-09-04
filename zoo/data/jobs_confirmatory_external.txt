@@ -3,8 +3,6 @@
 # the same cost profile. Qwen3.5 samples its eight predeclared blocks; other
 # profiles sample every second block over the analyzed range.
 q35_base2it_confirm | Qwen/Qwen3.5-9B-Base | Qwen/Qwen3.5-9B | --decoder parent --no_J --layers 4,8,12,16,20,24,28,30 --probes data/probes_qwen35.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
-q35_agent_sft_confirm | Qwen/Qwen3.5-9B-Base | FACET-Terminal/FACET-Terminal-Qwen3.5-9B | --decoder parent --no_J --layers 4,8,12,16,20,24,28,30 --probes data/probes_qwen35.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
-q35_agent_rl_confirm | Qwen/Qwen3.5-9B-Base | allenai/tmax-9b | --decoder parent --no_J --layers 4,8,12,16,20,24,28,30 --probes data/probes_qwen35.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
 q35_it2facet_confirm | Qwen/Qwen3.5-9B | FACET-Terminal/FACET-Terminal-Qwen3.5-9B | --decoder parent --no_J --layers 4,6,8,10,12,14,16,18,20,22,24,26,28,30 --probes data/probes_qwen35.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
 q35_it2tmax_confirm | Qwen/Qwen3.5-9B | allenai/tmax-9b | --decoder parent --no_J --layers 4,6,8,10,12,14,16,18,20,22,24,26,28,30 --probes data/probes_qwen35.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
 q35_it2openthoughts_confirm | Qwen/Qwen3.5-9B | allenai/qwen35-9b-openthoughts | --decoder parent --no_J --layers 4,6,8,10,12,14,16,18,20,22,24,26,28,30 --probes data/probes_qwen35.jsonl --category_stats --store_fp32 --support_k 50 --full_LL

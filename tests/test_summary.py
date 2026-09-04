@@ -22,6 +22,15 @@ def valid_summary() -> dict:
     return {
         "schema_version": 2,
         "tag": "example",
+        "edge_registry": {
+            "hash": "registry",
+            "hash_scheme": "sha256_canonical_json_v1",
+            "entry": {
+                "tag": "example",
+                "parent": "org/parent",
+                "descendant": "org/descendant",
+            },
+        },
         "model_a": "org/parent",
         "model_b": "org/descendant",
         "layers": [4],
@@ -161,3 +170,30 @@ def test_load_summary_applies_contract(tmp_path):
     path.write_text(json.dumps(valid_summary()), encoding="utf-8")
     loaded = load_summary(path, contract=SummaryContract(readout="LL"))
     assert loaded["tag"] == "example"
+
+
+def test_contract_can_bind_a_summary_to_an_exact_edge_registry():
+    validate_summary_contract(
+        valid_summary(),
+        SummaryContract(
+            readout="LL",
+            require_edge_registry=True,
+            edge_registry_hash="registry",
+        ),
+    )
+
+    summary = valid_summary()
+    summary["edge_registry"]["entry"]["parent"] = "org/unrelated"
+    with pytest.raises(ValueError, match="entry parent"):
+        validate_summary_contract(
+            summary,
+            SummaryContract(readout="LL", require_edge_registry=True),
+        )
+
+    summary = valid_summary()
+    summary["edge_registry"] = None
+    with pytest.raises(ValueError, match="edge registry hash"):
+        validate_summary_contract(
+            summary,
+            SummaryContract(readout="LL", require_edge_registry=True),
+        )

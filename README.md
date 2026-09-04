@@ -48,12 +48,17 @@ use the optional research dependencies.
 # Validate an experiment manifest before launching expensive jobs.
 lvt manifest check zoo/data/jobs_frpo.txt
 
+# Freeze both checkpoint direction and public lineage metadata.
+lvt manifest check zoo/data/jobs_confirmatory_qwen8.txt \
+  --edge-registry zoo/data/edge_registry.json
+
 # Inspect a compact trace summary.
 lvt summary zoo/results/ro_example_summary.json
 
 # Refuse legacy/native results when building a confirmatory LL analysis.
 lvt summary zoo/results/ro_example_summary.json --contract-readout LL \
-  --require-categories --require-fp32-store
+  --require-categories --require-fp32-store \
+  --edge-registry zoo/data/edge_registry.json
 
 # Apply the built-in vocabulary taxonomy to literal tokenizer pieces.
 lvt token classify ' therefore' '\boxed' '<|assistant|>'
@@ -81,7 +86,7 @@ two tokenizers are compatible.
 ## Repository map
 
 - `src/latent_vocabulary_tracing/`: path-independent metrics, manifests,
-  summary readers, taxonomy, and CLI.
+  lineage registries, summary readers, taxonomy, and CLI.
 - `tests/`: fast CPU tests for the stable package.
 - `zoo/`: research runners and experiment manifests. This layer is still being
   migrated away from workstation-specific paths and is not yet a stable API.

@@ -43,6 +43,7 @@ from latent_vocabulary_tracing.metrics import (  # noqa: E402
     one_sided_sign_test,
 )
 from latent_vocabulary_tracing.provenance import model_config_hash  # noqa: E402
+from latent_vocabulary_tracing.registry import load_edge_registry  # noqa: E402
 from latent_vocabulary_tracing.taxonomy import (  # noqa: E402
     TRACE_CATEGORIES,
     categorize_trace_token,
@@ -81,6 +82,11 @@ ap.add_argument(
 )
 ap.add_argument("--probes", default=f"{ZOO}/data/probes.jsonl")
 ap.add_argument("--out", default=f"{ZOO}/results")
+ap.add_argument(
+    "--edge-registry",
+    default="",
+    help="frozen registry whose tag and exact checkpoint edge must match this run",
+)
 ap.add_argument("--kinds", default="math,code,agent,neutral")
 ap.add_argument("--lmin", type=int, default=6)
 ap.add_argument("--lmax", type=int, default=34)
@@ -139,6 +145,15 @@ ap.add_argument(
 args = ap.parse_args()
 model_a_id = args.model_a_id or args.model_a
 model_b_id = args.model_b_id or args.model_b
+edge_registry_binding = None
+if args.edge_registry:
+    edge_registry = load_edge_registry(args.edge_registry)
+    edge = edge_registry.require(args.tag, model_a_id, model_b_id)
+    edge_registry_binding = {
+        "hash": edge_registry.digest,
+        "hash_scheme": "sha256_canonical_json_v1",
+        "entry": edge.as_dict(),
+    }
 dev = "cuda:0"
 t0 = time.time()
 
@@ -1057,6 +1072,7 @@ summary = {
         "b": model_metadata(model_b_id, args.model_b, model_b),
     },
     "tag": args.tag,
+    "edge_registry": edge_registry_binding,
     "lens": args.lens if J is not None else None,
     "lens_parent_id": args.lens_parent_id or None,
     "decoder_mode": "parent_anchored" if args.decoder == "parent" else "native_per_model",

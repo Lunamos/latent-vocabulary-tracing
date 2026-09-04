@@ -31,6 +31,8 @@ class SummaryContract:
     require_matched_architecture: bool = True
     require_category_statistics: bool = False
     require_fp32_store: bool = False
+    require_edge_registry: bool = False
+    edge_registry_hash: str | None = None
 
     def __post_init__(self) -> None:
         if self.readout not in {"J", "LL"}:
@@ -124,6 +126,30 @@ def validate_summary_contract(
 
     if summary.get("final_decoder_mode") != "native_per_model_control":
         errors.append("final logits are not labelled as a native-per-model control")
+
+    if contract.require_edge_registry or contract.edge_registry_hash is not None:
+        binding = summary.get("edge_registry", {})
+        if not isinstance(binding, dict):
+            binding = {}
+        if binding.get("hash_scheme") != "sha256_canonical_json_v1":
+            errors.append("edge registry hash scheme is absent or unknown")
+        if not binding.get("hash"):
+            errors.append("edge registry hash is absent")
+        if (
+            contract.edge_registry_hash is not None
+            and binding.get("hash") != contract.edge_registry_hash
+        ):
+            errors.append("edge registry hash does not match the requested registry")
+        entry = binding.get("entry", {})
+        for field, expected in (
+            ("tag", summary.get("tag")),
+            ("parent", summary.get("model_a")),
+            ("descendant", summary.get("model_b")),
+        ):
+            if entry.get(field) != expected:
+                errors.append(
+                    f"edge registry entry {field}={entry.get(field)!r}, need {expected!r}"
+                )
 
     if contract.require_category_statistics:
         category = summary.get("category_statistics", {})

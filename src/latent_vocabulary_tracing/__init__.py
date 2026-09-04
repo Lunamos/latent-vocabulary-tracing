@@ -18,6 +18,7 @@ from .metrics import (
     weighted_direction_alignment,
 )
 from .provenance import canonicalize_model_config, model_config_hash, stable_json_hash
+from .registry import EdgeRecord, EdgeRegistry, load_edge_registry
 from .spans import infer_role_spans, validate_role_spans
 from .summary import SummaryContract, load_summary, summary_view, validate_summary_contract
 from .taxonomy import (
@@ -33,6 +34,8 @@ from .taxonomy import (
 __all__ = [
     "benjamini_hochberg",
     "CATEGORIES",
+    "EdgeRecord",
+    "EdgeRegistry",
     "FUNCTIONAL_CATEGORIES",
     "TRACE_CATEGORIES",
     "PairJob",
@@ -49,6 +52,7 @@ __all__ = [
     "is_displayable_trace_token",
     "kl_divergence_from_logits",
     "load_manifest",
+    "load_edge_registry",
     "load_summary",
     "log_probability_delta",
     "moved_probability_mass",

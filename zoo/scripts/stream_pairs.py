@@ -34,6 +34,7 @@ ALLOW = ("*.safetensors", "*.json", "*.txt", "*.jinja", "*.model", "*.py", "*.ti
 sys.path.insert(0, str(ROOT / "src"))
 
 from latent_vocabulary_tracing.manifest import atomic_claim, load_manifest  # noqa: E402
+from latent_vocabulary_tracing.registry import load_edge_registry  # noqa: E402
 from latent_vocabulary_tracing.summary import SummaryContract, load_summary  # noqa: E402
 
 
@@ -67,6 +68,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--contract-readout", choices=("J", "LL"))
     parser.add_argument("--require-categories", action="store_true")
     parser.add_argument("--require-fp32-store", action="store_true")
+    parser.add_argument(
+        "--edge-registry",
+        type=Path,
+        help="validate every manifest edge and bind its content hash into each summary",
+    )
     args = parser.parse_args()
     if (args.require_categories or args.require_fp32_store) and not args.contract_readout:
         parser.error("contract requirements need --contract-readout")
@@ -258,6 +264,8 @@ def validate_result(path: Path, args: argparse.Namespace) -> None:
         readout=args.contract_readout,
         require_category_statistics=args.require_categories,
         require_fp32_store=args.require_fp32_store,
+        require_edge_registry=args.edge_registry is not None,
+        edge_registry_hash=getattr(args, "edge_registry_hash", None),
     )
     load_summary(path, contract=contract)
 
@@ -301,8 +309,10 @@ def run_job(job, args: argparse.Namespace, keep: set[str]) -> None:
             parent.spec.identity,
             "--model-b-id",
             descendant.spec.identity,
-            *job.extra_args,
         ]
+        if args.edge_registry is not None:
+            command.extend(("--edge-registry", str(args.edge_registry.resolve())))
+        command.extend(job.extra_args)
         log(f"START {job.tag}: {job.parent} vs {job.descendant}")
         job_log = LOG / f"ro_{job.tag}.log"
         with job_log.open("w", encoding="utf-8") as handle:
@@ -333,7 +343,13 @@ def main() -> None:
     LOG.mkdir(parents=True, exist_ok=True)
     RESULTS.mkdir(parents=True, exist_ok=True)
     keep = {value for value in args.keep.split(",") if value}
-    for job in load_manifest(args.jobs):
+    jobs = load_manifest(args.jobs)
+    if args.edge_registry is not None:
+        registry = load_edge_registry(args.edge_registry)
+        for job in jobs:
+            registry.require(job.tag, job.parent, job.descendant)
+        args.edge_registry_hash = registry.digest
+    for job in jobs:
         run_job(job, args, keep)
     log("jobs exhausted")
 
