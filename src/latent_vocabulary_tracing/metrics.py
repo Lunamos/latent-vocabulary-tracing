@@ -249,6 +249,10 @@ def category_probability_statistics(
         Net signed change divided by absolute movement in the category.  It is
         in ``[-1, 1]``; zero can mean balanced promotion and suppression, not
         absence of an edit.
+    ``turnover_enrichment_bits``
+        The base-2 log ratio between turnover composition and the category's
+        mean parent/descendant probability mass.  A value of ``+1`` means the
+        class carries twice the movement expected from its probability mass.
 
     Parent/descendant category mass and their smoothed log ratio are also
     returned.  The function expects full distributions when exact totals are
@@ -310,6 +314,12 @@ def category_probability_statistics(
         out=np.zeros_like(signed),
         where=absolute > 0,
     )
+    reference_mass = 0.5 * (parent_mass + descendant_mass)
+    turnover_enrichment_bits = np.where(
+        total_turnover > 0,
+        np.log2((composition + epsilon) / (reference_mass + epsilon)),
+        0.0,
+    )
     log_mass_ratio = np.log(descendant_mass + epsilon) - np.log(parent_mass + epsilon)
 
     return {
@@ -321,6 +331,7 @@ def category_probability_statistics(
         "turnover": turnover.reshape(output_shape),
         "composition": composition.reshape(output_shape),
         "balance": balance.reshape(output_shape),
+        "turnover_enrichment_bits": turnover_enrichment_bits.reshape(output_shape),
         "log_mass_ratio": log_mass_ratio.reshape(output_shape),
     }
 

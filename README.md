@@ -21,8 +21,15 @@ Beyond a single scalar, an LVT trace records:
 
 1. write amount on task and unrelated inputs;
 2. location across model depth and token roles;
-3. signed log-probability changes for concrete tokens; and
-4. alignment between the token-change directions of two training runs.
+3. category turnover, promotion/suppression balance, and turnover enrichment
+   relative to each category's midpoint probability mass;
+4. signed log-probability changes for concrete tokens; and
+5. alignment between the token-change directions of two training runs.
+
+Turnover enrichment is reported in bits. A value of `+1` means that a token
+class carries twice the share of probability movement expected from the
+class's mean parent/descendant probability mass. Raw turnover shares remain
+part of the result so enrichment cannot hide a negligible edit.
 
 ## Install
 

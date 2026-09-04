@@ -76,6 +76,9 @@ def test_category_statistics_separate_turnover_composition_and_balance():
     assert stats["balance"] == pytest.approx(np.array([[0.0, 0.0]]))
     assert stats["parent_mass"] == pytest.approx(np.array([[0.60, 0.40]]))
     assert stats["descendant_mass"] == pytest.approx(np.array([[0.60, 0.40]]))
+    assert stats["turnover_enrichment_bits"] == pytest.approx(
+        np.log2(np.array([[5 / 7, 10 / 7]]))
+    )
 
 
 def test_category_statistics_can_show_direction_within_category():

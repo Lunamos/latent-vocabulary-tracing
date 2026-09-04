@@ -312,6 +312,12 @@ def _category_statistics_from_probabilities(
     total_turnover = turnover.sum(dim=-1, keepdim=True)
     composition = torch.where(total_turnover > 0, turnover / total_turnover, 0.0)
     balance = torch.where(absolute > 0, signed / absolute, 0.0)
+    reference_mass = 0.5 * (parent_mass + descendant_mass)
+    turnover_enrichment_bits = torch.where(
+        total_turnover > 0,
+        torch.log2((composition + epsilon) / (reference_mass + epsilon)),
+        0.0,
+    )
     log_mass_ratio = torch.log(descendant_mass + epsilon) - torch.log(parent_mass + epsilon)
     return {
         "parent_mass": parent_mass,
@@ -322,6 +328,7 @@ def _category_statistics_from_probabilities(
         "turnover": turnover,
         "composition": composition,
         "balance": balance,
+        "turnover_enrichment_bits": turnover_enrichment_bits,
         "log_mass_ratio": log_mass_ratio,
     }
 

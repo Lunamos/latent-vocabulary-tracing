@@ -141,6 +141,11 @@ def validate_summary_contract(
         if category.get("top_change_ranking") != "net_probability_delta_after_averaging":
             errors.append("exact token changes are not ranked by net probability change")
         if (
+            category.get("turnover_enrichment")
+            != "log2_turnover_composition_over_midpoint_category_probability_mass"
+        ):
+            errors.append("category turnover enrichment is absent or uses another baseline")
+        if (
             category.get("representative_layer_rule")
             != "maximum_discovery_response_kl_ba_within_depth_summary"
         ):

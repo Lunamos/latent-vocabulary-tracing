@@ -103,6 +103,9 @@ def test_torch_category_statistics_expose_cancelled_turnover():
     assert stats["signed"][0].cpu().numpy() == pytest.approx([0.0, 0.0], abs=1e-7)
     assert stats["turnover"][0].cpu().numpy() == pytest.approx([0.15, 0.20])
     assert stats["composition"].sum().item() == pytest.approx(1.0)
+    assert stats["turnover_enrichment_bits"][0].cpu().numpy() == pytest.approx(
+        torch.log2(torch.tensor([5 / 7, 10 / 7])).numpy()
+    )
 
 
 def test_role_aggregation_weights_positions_then_returns_probe_vectors():

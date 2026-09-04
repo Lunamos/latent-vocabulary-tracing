@@ -41,6 +41,9 @@ def valid_summary() -> dict:
             "role_conditioned": True,
             "top_change_support": "full_vocabulary",
             "top_change_ranking": "net_probability_delta_after_averaging",
+            "turnover_enrichment": (
+                "log2_turnover_composition_over_midpoint_category_probability_mass"
+            ),
             "representative_layer_rule": (
                 "maximum_discovery_response_kl_ba_within_depth_summary"
             ),

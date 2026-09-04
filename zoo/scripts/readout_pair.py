@@ -1107,6 +1107,11 @@ summary = {
             "net_probability_delta_after_averaging" if args.category_stats else None
         ),
         "top_change_values": "percentage_points" if args.category_stats else None,
+        "turnover_enrichment": (
+            "log2_turnover_composition_over_midpoint_category_probability_mass"
+            if args.category_stats
+            else None
+        ),
         "token_inference": (
             "discovery_selection_then_heldout_sign_test_bh"
             if args.category_stats
