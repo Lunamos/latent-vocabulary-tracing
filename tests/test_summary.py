@@ -36,6 +36,7 @@ def valid_summary() -> dict:
             "role_conditioned": True,
             "top_change_support": "full_vocabulary",
             "top_change_ranking": "net_probability_delta_after_averaging",
+            "representative_layer_rule": "maximum_response_kl_ba_within_depth_summary",
         },
         "stored_support_dtype": "fp32",
         "models": {

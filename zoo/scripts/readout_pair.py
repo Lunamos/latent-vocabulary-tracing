@@ -756,6 +756,34 @@ for kind in sorted(kinds):
                 a["top_token_changes"][ro]["depth_50_85"] = token_change_payload(
                     depth_average, include_categories=True
                 )
+            eligible_layers = [
+                layer
+                for layer in summary_layers
+                if (kind, ro, layer) in token_change_sums
+                and a[ro][str(layer)]["kl_ba_resp"] is not None
+            ]
+            if eligible_layers:
+                peak_layer = max(
+                    eligible_layers,
+                    key=lambda layer: a[ro][str(layer)]["kl_ba_resp"],
+                )
+                peak_changes = (
+                    token_change_sums[(kind, ro, peak_layer)]
+                    / token_change_counts[(kind, ro, peak_layer)]
+                )
+                peak_payload = token_change_payload(
+                    peak_changes, include_categories=True
+                )
+                peak_payload.update(
+                    {
+                        "layer": peak_layer,
+                        "normalized_depth": (peak_layer + 1) / n_model_layers,
+                        "response_kl_ba": a[ro][str(peak_layer)]["kl_ba_resp"],
+                    }
+                )
+                a["top_token_changes"][ro][
+                    "peak_response_kl_50_85"
+                ] = peak_payload
     a["final"] = {
         k: sum(r["final"][k] for r in rs) / len(rs) for k in ("kl_ab", "kl_ba", "js", "jaccard")
     }
@@ -857,6 +885,11 @@ summary = {
         "top_change_values": "percentage_points" if args.category_stats else None,
         "depth_summary": (
             {"minimum": 0.50, "maximum": 0.85} if args.category_stats else None
+        ),
+        "representative_layer_rule": (
+            "maximum_response_kl_ba_within_depth_summary"
+            if args.category_stats
+            else None
         ),
     },
     "direction_statistics": {

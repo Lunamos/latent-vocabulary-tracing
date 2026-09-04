@@ -140,6 +140,11 @@ def validate_summary_contract(
             errors.append("exact token changes do not use full-vocabulary support")
         if category.get("top_change_ranking") != "net_probability_delta_after_averaging":
             errors.append("exact token changes are not ranked by net probability change")
+        if (
+            category.get("representative_layer_rule")
+            != "maximum_response_kl_ba_within_depth_summary"
+        ):
+            errors.append("representative token layer does not follow the frozen peak-KL rule")
     if contract.require_fp32_store:
         stored_dtype = summary.get("stored_support_dtype", summary.get("support_dtype"))
         if stored_dtype != "fp32":
