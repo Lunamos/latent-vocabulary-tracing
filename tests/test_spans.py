@@ -24,6 +24,16 @@ def test_agent_protocol_is_split_into_observation_deliberation_and_action():
     assert '"analysis"' in text[slice(*spans["assistant_deliberation"][0])]
     assert '"commands"' in text[slice(*spans["tool_call"][0])]
     assert '"task_complete"' in text[slice(*spans["completion_signal"][0])]
+    typed_response = [
+        spans[name][0]
+        for name in ("assistant_deliberation", "tool_call", "completion_signal")
+    ]
+    assert typed_response[0][0] == spans["model_response"][0][0]
+    assert typed_response[-1][1] == spans["model_response"][0][1]
+    assert all(
+        left[1] == right[0]
+        for left, right in zip(typed_response, typed_response[1:], strict=False)
+    )
     validate_role_spans(spans, n_tokens=len(text))
 
 

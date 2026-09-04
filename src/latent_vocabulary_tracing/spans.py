@@ -26,6 +26,21 @@ def _first_content_offset(offsets: Sequence[tuple[int, int]], start: int) -> int
     return None
 
 
+def _char_boundary_to_token_index(
+    offsets: Sequence[tuple[int, int]],
+    boundary: int,
+    *,
+    start: int = 0,
+) -> int:
+    """Assign a token crossing a character boundary to the later span."""
+
+    for index in range(start, len(offsets)):
+        token_start, token_end = offsets[index]
+        if token_end > token_start and token_end > boundary:
+            return index
+    return len(offsets)
+
+
 def infer_role_spans(
     text: str,
     *,
@@ -107,21 +122,26 @@ def infer_role_spans(
         else None
     )
 
-    deliberation_end = command_start or completion_start or len(text)
-    add(
-        "assistant_deliberation",
-        _char_to_token_span(offsets, response_char_start, deliberation_end),
+    command_token_start = (
+        _char_boundary_to_token_index(offsets, command_start, start=prompt_end)
+        if command_start is not None
+        else None
     )
+    completion_token_start = (
+        _char_boundary_to_token_index(offsets, completion_start, start=prompt_end)
+        if completion_start is not None
+        else None
+    )
+
+    deliberation_end = command_token_start or completion_token_start or n_tokens
+    add("assistant_deliberation", (prompt_end, deliberation_end))
     if command_start is not None:
         add(
             "tool_call",
-            _char_to_token_span(offsets, command_start, completion_start or len(text)),
+            (command_token_start, completion_token_start or n_tokens),
         )
     if completion_start is not None:
-        add(
-            "completion_signal",
-            _char_to_token_span(offsets, completion_start, len(text)),
-        )
+        add("completion_signal", (completion_token_start, n_tokens))
     return spans
 
 
