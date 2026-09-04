@@ -37,6 +37,10 @@ ROOT = os.path.dirname(ZOO)
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
 import latent_vocabulary_tracing.taxonomy as taxonomy_module  # noqa: E402
+from latent_vocabulary_tracing.compatibility import (  # noqa: E402
+    validate_architecture_pair,
+    validate_tokenizer_vocabularies,
+)
 from latent_vocabulary_tracing.metrics import (  # noqa: E402
     benjamini_hochberg,
     deterministic_balanced_split,
@@ -264,6 +268,7 @@ config_a, config_b = text_config(model_a), text_config(model_b)
 assert config_a.vocab_size == config_b.vocab_size, "vocab_size mismatch"
 assert config_a.hidden_size == config_b.hidden_size, "hidden_size mismatch"
 va, vb = tok.get_vocab(), tok_b.get_vocab()
+tokenizer_hash_a, tokenizer_hash_b = validate_tokenizer_vocabularies(va, vb)
 tok_note = {
     "checked_probe_token_ids": len(probe_ids),
     "id_piece_mismatches": 0,
@@ -272,8 +277,8 @@ tok_note = {
     "only_b_count": len(set(vb) - set(va)),
     "only_a_examples": sorted(set(va) - set(vb))[:20],
     "only_b_examples": sorted(set(vb) - set(va))[:20],
-    "tokenizer_hash_a": sha256_json(va),
-    "tokenizer_hash_b": sha256_json(vb),
+    "tokenizer_hash_a": tokenizer_hash_a,
+    "tokenizer_hash_b": tokenizer_hash_b,
     "tokenizer_hash_scheme": "sha256_canonical_json_v1",
 }
 print(f"models loaded ({time.time() - t0:.0f}s) tokenizer note: {tok_note}", flush=True)
@@ -297,6 +302,28 @@ def _parts(m):
         "cannot locate layers / final norm / lm_head"
     )
     return inner, layers, norm, head
+
+
+def architecture_signature(model):
+    config = text_config(model)
+    _, layers, norm, _ = _parts(model)
+    rope = getattr(config, "rope_scaling", None) or getattr(
+        config, "rope_parameters", None
+    )
+    return {
+        "architecture": type(model).__name__,
+        "hidden_size": int(config.hidden_size),
+        "n_layers": len(layers),
+        "vocab_size": int(config.vocab_size),
+        "norm_type": type(norm).__name__,
+        "rope": rope,
+    }
+
+
+validate_architecture_pair(
+    architecture_signature(model_a),
+    architecture_signature(model_b),
+)
 
 
 def unembed(m, x):

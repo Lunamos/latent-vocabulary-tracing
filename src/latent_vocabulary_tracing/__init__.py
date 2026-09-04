@@ -1,5 +1,6 @@
 """Readable, layer-resolved comparisons between related language models."""
 
+from .compatibility import validate_architecture_pair, validate_tokenizer_vocabularies
 from .manifest import PairJob, load_manifest, parse_manifest_line
 from .metrics import (
     benjamini_hochberg,
@@ -65,7 +66,9 @@ __all__ = [
     "summary_view",
     "select_normalized_depth_layers",
     "validate_summary_contract",
+    "validate_architecture_pair",
     "validate_role_spans",
+    "validate_tokenizer_vocabularies",
     "vocabulary_write_amount",
     "weighted_direction_alignment",
 ]
