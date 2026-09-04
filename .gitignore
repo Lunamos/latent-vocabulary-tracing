@@ -1,0 +1,61 @@
+# External checkouts and local research references
+/jacobian-lens/
+/reference_paper/
+/.claude/
+
+# Private manuscripts and working documentation
+/paper/
+/paper_old/
+/docs/
+
+# Local legacy workspaces: retained on disk, curated into the package later
+/opd/
+/repro/
+
+# Python environments and caches
+**/.venv/
+**/.venv-*/
+**/.env
+**/.env.*
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+*.py[cod]
+*.egg-info/
+/build/
+/dist/
+
+# Model weights, fitted lenses, and tensor stores
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+/zoo/results/
+/zoo/analysis/
+/zoo/*.md
+/opd/results/
+/opd/lenses/
+/opd/ckpts/
+/repro/lenses/
+
+# Runtime state and generated research galleries
+/zoo/logs/
+/zoo/figs/
+/opd/logs/
+*.CLAIM
+*.DONE
+*.FAIL
+
+# Large generated reports; sources and compact analyses remain tracked
+/opd/*.html
+/repro/*.html
+/repro/slice_*.html
+
+# Editor and operating-system files
+.DS_Store
+.netrc
+*credentials*
+.idea/
+.vscode/
+*~

@@ -1,0 +1,11 @@
+v2_r1distill | Qwen/Qwen3-8B-Base | deepseek-ai/DeepSeek-R1-0528-Qwen3-8B | --probes data/probes_v2.jsonl --no_store
+v2_klear_rl | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-Reasoner-8B | --probes data/probes_v2.jsonl --no_store
+v2_casc_final | Qwen/Qwen3-8B-Base | nvidia/Nemotron-Cascade-8B | --probes data/probes_v2.jsonl --no_store
+v2_xcoder_sft | Qwen/Qwen3-8B-Base | IIGroup/X-Coder-SFT-Qwen3-8B | --probes data/probes_v2.jsonl --no_store
+v2_nemo_terminal | Qwen/Qwen3-8B-Base | nvidia/Nemotron-Terminal-8B | --probes data/probes_v2.jsonl --no_store
+v2_opd_step200 | Qwen/Qwen3-8B-Base | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3-OPD-step200-Qwen3-32B-OpenThoughts3 | --probes data/probes_v2.jsonl --no_store
+v2_casc_sft2rlhf | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-SFT | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-RLHF | --probes data/probes_v2.jsonl --no_store
+v2_tmax_sft2rl8b | allenai/tmax-sft-8b | allenai/tmax-8b | --probes data/probes_v2.jsonl --no_store
+v2_opd_sft2opd | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3 | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3-OPD-step200-Qwen3-32B-OpenThoughts3 | --probes data/probes_v2.jsonl --no_store
+v2_it_sera | Qwen/Qwen3-8B | allenai/SERA-8B | --probes data/probes_v2.jsonl --no_store
+v2_it_ota2_sft | Qwen/Qwen3-8B | open-thoughts/OpenThinkerAgent-8B-ColdStartSFTForRL | --probes data/probes_v2.jsonl --no_store

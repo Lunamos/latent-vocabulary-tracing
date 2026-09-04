@@ -1,0 +1,23 @@
+# OLMo-3 7B family (32 layers, no J-lens yet): logit lens + final + hidden, layers 4..30. A = Olmo-3-1025-7B base (kept on disk).
+# TAG | A | B | extra
+olmo_think_sft      | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Think-SFT            | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl
+olmo_think_sft_s1k  | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Think-SFT@step1000   | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_think_sft_s5k  | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Think-SFT@step5000   | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_think_sft_s20k | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Think-SFT@step20000  | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_rlzero_math    | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-RL-Zero-Math         | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl
+olmo_rlzero_math_s300 | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-RL-Zero-Math@step_300 | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_rlzero_math_s1000 | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-RL-Zero-Math@step_1000 | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_rlzero_code    | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-RL-Zero-Code         | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_rlzero_if      | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-RL-Zero-IF           | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_think_dpo      | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Think-DPO            | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_think          | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Think                | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl
+olmo_instruct_sft   | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Instruct-SFT         | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_instruct       | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Instruct             | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+# direct stage increments (pass 2)
+olmo_sft2dpo        | allenai/Olmo-3-7B-Think-SFT | allenai/Olmo-3-7B-Think-DPO | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_dpo2think      | allenai/Olmo-3-7B-Think-DPO | allenai/Olmo-3-7B-Think | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_isft2idpo      | allenai/Olmo-3-7B-Instruct-SFT | allenai/Olmo-3-7B-Instruct-DPO | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_idpo2instruct  | allenai/Olmo-3-7B-Instruct-DPO | allenai/Olmo-3-7B-Instruct | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_think_s0025    | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Think@step_0025 | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_think_s0300    | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Think@step_0300 | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store
+olmo_rlzero_math_s1900 | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-RL-Zero-Math@step_1900 | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_olmo.jsonl --no_store

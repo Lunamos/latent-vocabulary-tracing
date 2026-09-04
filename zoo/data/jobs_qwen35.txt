@@ -1,0 +1,10 @@
+# Qwen3.5-9B family (hybrid GDN/attn, 32 layers, VL wrapper): logit lens + final, layers 4..30, probes rendered with the Qwen3.5 template
+q35_it          | Qwen/Qwen3.5-9B-Base | Qwen/Qwen3.5-9B | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl
+q35_tmax        | Qwen/Qwen3.5-9B-Base | allenai/tmax-9b | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl
+q35_facet       | Qwen/Qwen3.5-9B-Base | FACET-Terminal/FACET-Terminal-Qwen3.5-9B | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl
+q35_it2tmax     | Qwen/Qwen3.5-9B | allenai/tmax-9b | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl
+q35_it2facet    | Qwen/Qwen3.5-9B | FACET-Terminal/FACET-Terminal-Qwen3.5-9B | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl
+q35_it2omni     | Qwen/Qwen3.5-9B | Tesslate/OmniCoder-9B | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl --no_store
+q35_it2ot       | Qwen/Qwen3.5-9B | allenai/qwen35-9b-openthoughts | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl --no_store
+q35_it2swesmith | Qwen/Qwen3.5-9B | allenai/qwen35-9b-swesmith | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl --no_store
+q35_it2endless  | Qwen/Qwen3.5-9B | allenai/qwen35-9b-endless | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl --no_store

@@ -1,0 +1,20 @@
+# Shared acceleration queue. Workers atomically claim unfinished tags.
+# Partially downloaded full-LL job first so the existing download resumes promptly.
+opd_sft2opd_fll   | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3 | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3-OPD-step200-Qwen3-32B-OpenThoughts3 | --full_LL
+frpo_a8_klreward_krew_k1_coef0_5             | Qwen/Qwen3-1.7B-Base | FRPO/qwen3-1.7b-a8_klreward-krew-k1-coef0.5-mb4-eta100-bs256x5-n2 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+frpo_a8_klreward_krew_k1_coef1_0             | Qwen/Qwen3-1.7B-Base | FRPO/qwen3-1.7b-a8_klreward-krew-k1-coef1.0-mb4-eta100-bs256x5-n2 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+tmax_sft2rl8b_fll | allenai/tmax-sft-8b | allenai/tmax-8b | --full_LL
+frpo_a8_klreward_krew_k1_coef1e_2            | Qwen/Qwen3-1.7B-Base | FRPO/qwen3-1.7b-a8_klreward-krew-k1-coef1e-2-mb4-eta100-bs256x5-n2 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+frpo_a8_klreward_krew_k1_coef1e_3            | Qwen/Qwen3-1.7B-Base | FRPO/qwen3-1.7b-a8_klreward-krew-k1-coef1e-3-mb4-eta100-bs256x5-n2 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+ota2_sft2rl_fll   | open-thoughts/OpenThinkerAgent-8B-ColdStartSFTForRL | open-thoughts/OpenThinkerAgent-8B-RL | --full_LL
+frpo_a8_klreward_krew_k1_coef1e_4            | Qwen/Qwen3-1.7B-Base | FRPO/qwen3-1.7b-a8_klreward-krew-k1-coef1e-4-mb4-eta100-bs256x5-n2 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+frpo_a9_dapo_dapo_noKL_clip0_2_r3            | Qwen/Qwen3-1.7B-Base | FRPO/qwen3-1.7b-a9_dapo-dapo-noKL-clip0.2-mb4-eta100-bs256x5-n2-r3 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_opd_deepmath_fll | Qwen/Qwen3-1.7B-Base | boyanbiji/Qwen3-1.7B-OPD-step120 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL
+frpo_a9_dapo_dapo_noKL_clip0_2_0_28_r2       | Qwen/Qwen3-1.7B-Base | FRPO/qwen3-1.7b-a9_dapo-dapo-noKL-clip0.2_0.28-mb4-eta100-bs256x5-n2-r2 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+frpo_a9_dapo_dapo_noKL_clip0_2_0_28_r3       | Qwen/Qwen3-1.7B-Base | FRPO/qwen3-1.7b-a9_dapo-dapo-noKL-clip0.2_0.28-mb4-eta100-bs256x5-n2-r3 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_ultrachat_fll | Qwen/Qwen3-1.7B-Base | ayushshah/Qwen3-1.7B-UltraChat-SFT | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL
+frpo_a9_dapo_dapo_noKL_clip0_2_0_35_r3       | Qwen/Qwen3-1.7B-Base | FRPO/qwen3-1.7b-a9_dapo-dapo-noKL-clip0.2_0.35-mb4-eta100-bs256x5-n2-r3 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+frpo4_a0_klloss_lossKL_coef0_001             | Qwen/Qwen3-4B-Base | FRPO/qwen3-4b-a0_klloss-lossKL-coef0.001-mb4-eta100-bs256x5-n4 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q17_sft_lora400k_fll | Qwen/Qwen3-1.7B-Base | boyanbiji/qwen3-1.7B-sft-lora128-400k | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL
+frpo4_a1_base_k1_cNone_clip0_2               | Qwen/Qwen3-4B-Base | FRPO/qwen3-4b-a1_base-k1-cNone-clip0.2-mb4-eta100-bs256x5-n4 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+frpo4_a9_dapo_dapo_noKL_clip0_2_0_28         | Qwen/Qwen3-4B-Base | FRPO/qwen3-4b-a9_dapo-dapo-noKL-clip0.2_0.28-mb4-eta100-bs256x5-n4 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store

@@ -1,0 +1,21 @@
+# core panel, priority order (all Qwen3-8B-Base derived unless noted)
+deepseek-ai/DeepSeek-R1-0528-Qwen3-8B
+Kwai-Klear/Klear-Reasoner-8B-SFT
+Kwai-Klear/Klear-Reasoner-8B
+caiyuchen/DAPO-step-27
+nvidia/Nemotron-Cascade-8B
+nvidia/Nemotron-Cascade-8B-Intermediate-ckpts
+IIGroup/X-Coder-SFT-Qwen3-8B
+IIGroup/X-Coder-RL-Qwen3-8B
+OpenDataArena/Qwen3-8B-ODA-Math-460k
+MegaScience/Qwen3-8B-MegaScience
+stepfun-ai/RLVR-8B-0926
+stepfun-ai/PaCoRe-8B
+RuleReasoner/RuleReasoner-8B
+caiyuchen/DAPO-step-13
+# agentic (from Qwen3-8B IT)
+open-thoughts/OpenThinker-Agent-v1-SFT
+open-thoughts/OpenThinker-Agent-v1
+allenai/SERA-8B
+nvidia/Nemotron-Orchestrator-8B
+hkust-nlp/WebExplorer-8B

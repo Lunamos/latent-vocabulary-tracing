@@ -1,0 +1,29 @@
+# Qwen3-1.7B size-axis family. lens = qwen3-17b_merged.pt (n=120, fitted on ICE 09-03). probes = probes.jsonl (tokenizer identical to Qwen3-8B).
+q17_it            | Qwen/Qwen3-1.7B-Base | Qwen/Qwen3-1.7B | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_sft_ot3       | Qwen/Qwen3-1.7B-Base | Thinking-Space/Qwen3-1.7B-SFT | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_opd_dapo      | Qwen/Qwen3-1.7B-Base | Thinking-Space/Qwen3-1.7B-Base-OPD | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_opd_deepmath  | Qwen/Qwen3-1.7B-Base | boyanbiji/Qwen3-1.7B-OPD-step120 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_opsa          | Qwen/Qwen3-1.7B-Base | Tuwhy/Qwen3-1.7B-OPSA | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_grpo_best     | Qwen/Qwen3-1.7B-Base | logan7000/grpo-qwen3-1p7b-math345-best | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_grpo_end      | Qwen/Qwen3-1.7B-Base | logan7000/grpo-qwen3-1p7b-math345-end | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_ttrl_best     | Qwen/Qwen3-1.7B-Base | logan7000/unmaj-qwen3-1p7b-math345-best | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_ultrachat     | Qwen/Qwen3-1.7B-Base | ayushshah/Qwen3-1.7B-UltraChat-SFT | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_capsd_cap2k   | Qwen/Qwen3-1.7B-Base | AmberYifan/capsd-Qwen3-1.7B-Base-math_cap_b2000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_capsd_cap4k   | Qwen/Qwen3-1.7B-Base | AmberYifan/capsd-Qwen3-1.7B-Base-math_cap_b4000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_capsd_ppl2k   | Qwen/Qwen3-1.7B-Base | AmberYifan/capsd-Qwen3-1.7B-Base-math_ppl_b2000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_capsd_ppl4k   | Qwen/Qwen3-1.7B-Base | AmberYifan/capsd-Qwen3-1.7B-Base-math_ppl_b4000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_sft_lora400k  | Qwen/Qwen3-1.7B-Base | boyanbiji/qwen3-1.7B-sft-lora128-400k | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_sft_lora114k  | Qwen/Qwen3-1.7B-Base | boyanbiji/qwen3-1.7B-sft-lora32-114k | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_opd_countdown_s20  | Qwen/Qwen3-1.7B-Base | boyanbiji/qwen3-1.7B-base-countdown-opd::global_step_20 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_opd_countdown_s100 | Qwen/Qwen3-1.7B-Base | boyanbiji/qwen3-1.7B-base-countdown-opd::global_step_100 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_opd_countdown_s150 | Qwen/Qwen3-1.7B-Base | boyanbiji/qwen3-1.7B-base-countdown-opd::global_step_150 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_opd_kk_s150        | Qwen/Qwen3-1.7B-Base | boyanbiji/qwen3-1.7B-base-kk-opd::global_step_150 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_opd_zebra_s150     | Qwen/Qwen3-1.7B-Base | boyanbiji/qwen3-1.7B-base-zebra-opd::global_step_150 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_iol           | Qwen/Qwen3-1.7B-Base | acram/iol-qwen3-1_7b-plain | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_it2dapo       | Qwen/Qwen3-1.7B | FRPO/qwen3-1.7b-a9_dapo-dapo-noKL-clip0.2-mb4-eta100-bs256x5-n2-r3 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_it2mbpp_grpo  | Qwen/Qwen3-1.7B | sergiopaniego/qwen3-1.7b-mbpp-grpo | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_it2wordle_grpo| Qwen/Qwen3-1.7B | sergiopaniego/qwen3-1.7b-wordle-grpo | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_it2dualmind   | Qwen/Qwen3-1.7B | reaperdoesntknow/DualMind-TKD-Agentic-1.7B | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_it2kimina     | Qwen/Qwen3-1.7B | AI-MO/Kimina-Prover-Distill-1.7B | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_it2klingspor  | Qwen/Qwen3-1.7B | Klingspor/Qwen3-1.7B-SFT | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store
+q17_it2coder_sft  | Qwen/Qwen3-1.7B | reaperdoesntknow/Qwen3-1.7B-Coder-Distilled-SFT | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --no_store

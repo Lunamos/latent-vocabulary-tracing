@@ -1,0 +1,11 @@
+v2_it | Qwen/Qwen3-8B-Base | Qwen/Qwen3-8B | --probes data/probes_v2.jsonl --no_store
+v2_klear_sft | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-Reasoner-8B-SFT | --probes data/probes_v2.jsonl --no_store
+v2_casc_sft | Qwen/Qwen3-8B-Base | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-SFT | --probes data/probes_v2.jsonl --no_store
+v2_dapo27 | Qwen/Qwen3-8B-Base | caiyuchen/DAPO-step-27 | --probes data/probes_v2.jsonl --no_store
+v2_swelego | Qwen/Qwen3-8B-Base | SWE-Lego/SWE-Lego-Qwen3-8B | --probes data/probes_v2.jsonl --no_store
+v2_seta_rl | Qwen/Qwen3-8B-Base | camel-ai/Qwen3-8B-SETA-Env-RL | --probes data/probes_v2.jsonl --no_store
+v2_klear_sft2rl | Kwai-Klear/Klear-Reasoner-8B-SFT | Kwai-Klear/Klear-Reasoner-8B | --probes data/probes_v2.jsonl --no_store
+v2_ota2_sft2rl | open-thoughts/OpenThinkerAgent-8B-ColdStartSFTForRL | open-thoughts/OpenThinkerAgent-8B-RL | --probes data/probes_v2.jsonl --no_store
+v2_sutra_distil2rlvr | espressovi/SUTRA-qwen3-8b-distil | espressovi/SUTRA-qwen3-8b-rlvr | --probes data/probes_v2.jsonl --no_store
+v2_it_swelego | Qwen/Qwen3-8B | SWE-Lego/SWE-Lego-Qwen3-8B | --probes data/probes_v2.jsonl --no_store
+v2_it_seta_rl | Qwen/Qwen3-8B | camel-ai/Qwen3-8B-SETA-Env-RL | --probes data/probes_v2.jsonl --no_store

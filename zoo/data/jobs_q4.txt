@@ -1,0 +1,33 @@
+# Qwen3-4B size-axis family. lens = qwen3-4b_merged.pt (n=120, fitted on ICE 09-03). 36 layers like Qwen3-8B -> same bands.
+q4_it             | Qwen/Qwen3-4B-Base | Qwen/Qwen3-4B | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_inst2507       | Qwen/Qwen3-4B-Base | Qwen/Qwen3-4B-Instruct-2507 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_think2507      | Qwen/Qwen3-4B-Base | Qwen/Qwen3-4B-Thinking-2507 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_grpo_ts        | Qwen/Qwen3-4B-Base | Thinking-Space/Qwen3-4B-Base-GRPO | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_opsa           | Qwen/Qwen3-4B-Base | Tuwhy/Qwen3-4B-OPSA | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_spiral_s0      | Qwen/Qwen3-4B-Base | caiyuchen/Spiral-step-0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_spiral_s5      | Qwen/Qwen3-4B-Base | caiyuchen/Spiral-step-5 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_spiral_s10     | Qwen/Qwen3-4B-Base | caiyuchen/Spiral-step-10 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_spiral_s15     | Qwen/Qwen3-4B-Base | caiyuchen/Spiral-step-15 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_spiral_s22     | Qwen/Qwen3-4B-Base | caiyuchen/Spiral-step-22 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_capsd_rand1k   | Qwen/Qwen3-4B-Base | AmberYifan/capsd-qwen3-numina-Qwen3-4B-Base-math_random_b1000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_capsd_rand2k   | Qwen/Qwen3-4B-Base | AmberYifan/capsd-qwen3-numina-Qwen3-4B-Base-math_random_b2000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_capsd_rand4k   | Qwen/Qwen3-4B-Base | AmberYifan/capsd-qwen3-numina-Qwen3-4B-Base-math_random_b4000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_capsd_rand8k   | Qwen/Qwen3-4B-Base | AmberYifan/capsd-qwen3-numina-Qwen3-4B-Base-math_random_b8000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_capsd_cap8k    | Qwen/Qwen3-4B-Base | AmberYifan/capsd-qwen3-numina-Qwen3-4B-Base-math_cap_b8000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_capsd_ppl8k    | Qwen/Qwen3-4B-Base | AmberYifan/capsd-qwen3-numina-Qwen3-4B-Base-math_ppl_b8000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_capsd_sci1k    | Qwen/Qwen3-4B-Base | AmberYifan/capsd-qwen3-sciweb-stackexchange-Qwen3-4B-Base-science_random_b1000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_capsd_sci8k    | Qwen/Qwen3-4B-Base | AmberYifan/capsd-qwen3-sciweb-stackexchange-Qwen3-4B-Base-science_random_b8000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_nonthink_mathrl| Qwen/Qwen3-4B-Base | caiyuchen/Qwen3-4B-Non-Thinking-Math-RL | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_it2inst2507    | Qwen/Qwen3-4B | Qwen/Qwen3-4B-Instruct-2507 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_it2think2507   | Qwen/Qwen3-4B | Qwen/Qwen3-4B-Thinking-2507 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_it2polaris     | Qwen/Qwen3-4B | POLARIS-Project/Polaris-4B-Preview | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_it2jannano     | Qwen/Qwen3-4B | Menlo/Jan-nano | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_it2saferl      | Qwen/Qwen3-4B | Qwen/Qwen3-4B-SafeRL | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_it2countdown   | Qwen/Qwen3-4B | NotoriousH2/Qwen3-4B-Countdown-RLVR | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_it2calendar_sft| Qwen/Qwen3-4B | NotoriousH2/Qwen3-4B-Calendar-Agent-SFT | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_it2devin_sft   | Qwen/Qwen3-4B | davidnichols-ops/qwen3-4b-devin-sft | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34
+q4_it2pythagoras  | Qwen/Qwen3-4B | Pythagoras-LM/Pythagoras-Prover-4B | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_it2science_sft | Qwen/Qwen3-4B | graf/Qwen3-4B-SFT-science-1e-5 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_it2osim        | Qwen/Qwen3-4B | cmu-lti/osim-4b | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_it2nonthink_mathrl | Qwen/Qwen3-4B | caiyuchen/Qwen3-4B-Non-Thinking-Math-RL | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store
+q4_it2guard       | Qwen/Qwen3-4B | Qwen/Qwen3Guard-Gen-4B | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-4b_merged.pt --lmin 6 --lmax 34 --no_store

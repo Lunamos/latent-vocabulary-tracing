@@ -1,0 +1,26 @@
+# TAG | MODEL (HF id or local path; ::subdir allowed) | extra args
+base          | Qwen/Qwen3-8B-Base |
+it            | Qwen/Qwen3-8B |
+r1distill     | deepseek-ai/DeepSeek-R1-0528-Qwen3-8B |
+klear_sft     | Kwai-Klear/Klear-Reasoner-8B-SFT |
+klear_rl      | Kwai-Klear/Klear-Reasoner-8B |
+casc_sft      | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-SFT |
+casc_rlhf     | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-RLHF |
+casc_ifrl     | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-IFRL |
+casc_mathrl   | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-MathRL |
+casc_coderl   | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-CodeRL |
+casc_final    | nvidia/Nemotron-Cascade-8B |
+dapo27        | caiyuchen/DAPO-step-27 |
+dapo13        | caiyuchen/DAPO-step-13 |
+xcoder_sft    | IIGroup/X-Coder-SFT-Qwen3-8B |
+xcoder_rl     | IIGroup/X-Coder-RL-Qwen3-8B |
+oda_math      | OpenDataArena/Qwen3-8B-ODA-Math-460k |
+megascience   | MegaScience/Qwen3-8B-MegaScience |
+stepfun_rlvr  | stepfun-ai/RLVR-8B-0926 |
+pacore        | stepfun-ai/PaCoRe-8B |
+rulereasoner  | RuleReasoner/RuleReasoner-8B |
+# skip-eval ota_sft       | open-thoughts/OpenThinker-Agent-v1-SFT |
+# skip-eval ota_rl        | open-thoughts/OpenThinker-Agent-v1 |
+# skip-eval sera          | allenai/SERA-8B |
+# skip-eval orchestrator  | nvidia/Nemotron-Orchestrator-8B |
+# skip-eval webexplorer   | hkust-nlp/WebExplorer-8B |

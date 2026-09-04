@@ -1,0 +1,5 @@
+# stored re-reads of the small-data SFT series (for direction / sharpening / content analyses)
+q17_capsd_cap4k_st | Qwen/Qwen3-1.7B-Base | AmberYifan/capsd-Qwen3-1.7B-Base-math_cap_b4000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_capsd_ppl2k_st | Qwen/Qwen3-1.7B-Base | AmberYifan/capsd-Qwen3-1.7B-Base-math_ppl_b2000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_sft_lora400k_st | Qwen/Qwen3-1.7B-Base | boyanbiji/qwen3-1.7B-sft-lora128-400k | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26
+q17_ultrachat_st   | Qwen/Qwen3-1.7B-Base | ayushshah/Qwen3-1.7B-UltraChat-SFT | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26

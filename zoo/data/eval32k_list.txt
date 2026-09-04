@@ -1,0 +1,12 @@
+# thinking-capable math models for AIME avg@4 @30k tokens (ICE H100 jobs); TAG | HF id
+it            | Qwen/Qwen3-8B
+r1distill     | deepseek-ai/DeepSeek-R1-0528-Qwen3-8B
+klear_sft     | Kwai-Klear/Klear-Reasoner-8B-SFT
+klear_rl      | Kwai-Klear/Klear-Reasoner-8B
+casc_final    | nvidia/Nemotron-Cascade-8B
+dapo27        | caiyuchen/DAPO-step-27
+dapo13        | caiyuchen/DAPO-step-13
+base          | Qwen/Qwen3-8B-Base
+stepfun_rlvr  | stepfun-ai/RLVR-8B-0926
+opd_sft3000   | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3
+opd_step200   | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3-OPD-step200-Qwen3-32B-OpenThoughts3

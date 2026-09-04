@@ -1,0 +1,5 @@
+q35_it2tmax_s100 | Qwen/Qwen3.5-9B | allenai/tmax-9b@step_100 | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl --no_store
+q35_it2tmax_s300 | Qwen/Qwen3.5-9B | allenai/tmax-9b@step_300 | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl --no_store
+q35_it2tmax_s400 | Qwen/Qwen3.5-9B | allenai/tmax-9b@step_400 | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl --no_store
+q35_it2tmax_s500 | Qwen/Qwen3.5-9B | allenai/tmax-9b@step_500 | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl --no_store
+q35_base2tmax_s500 | Qwen/Qwen3.5-9B-Base | allenai/tmax-9b@step_500 | --no_J --layers 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 --probes data/probes_qwen35.jsonl --no_store

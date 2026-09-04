@@ -1,0 +1,9 @@
+olmoJ_think_sft | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Think-SFT | --lens ../repro/lenses/olmo3_merged.pt --lmin 4 --lmax 30 --probes data/probes_olmo.jsonl
+olmoJ_rlzero_math | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-RL-Zero-Math | --lens ../repro/lenses/olmo3_merged.pt --lmin 4 --lmax 30 --probes data/probes_olmo.jsonl
+olmoJ_rlzero_code | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-RL-Zero-Code | --lens ../repro/lenses/olmo3_merged.pt --lmin 4 --lmax 30 --probes data/probes_olmo.jsonl --no_store
+olmoJ_think | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Think | --lens ../repro/lenses/olmo3_merged.pt --lmin 4 --lmax 30 --probes data/probes_olmo.jsonl --no_store
+olmoJ_instruct | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Instruct | --lens ../repro/lenses/olmo3_merged.pt --lmin 4 --lmax 30 --probes data/probes_olmo.jsonl --no_store
+olmoJ_sft_s1k | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Think-SFT@step1000 | --lens ../repro/lenses/olmo3_merged.pt --lmin 4 --lmax 30 --probes data/probes_olmo.jsonl
+olmoJ_sft_s5k | allenai/Olmo-3-1025-7B | allenai/Olmo-3-7B-Think-SFT@step5000 | --lens ../repro/lenses/olmo3_merged.pt --lmin 4 --lmax 30 --probes data/probes_olmo.jsonl --no_store
+olmoJ_sft2dpo | allenai/Olmo-3-7B-Think-SFT | allenai/Olmo-3-7B-Think-DPO | --lens ../repro/lenses/olmo3_merged.pt --lmin 4 --lmax 30 --probes data/probes_olmo.jsonl --no_store
+olmoJ_dpo2think | allenai/Olmo-3-7B-Think-DPO | allenai/Olmo-3-7B-Think | --lens ../repro/lenses/olmo3_merged.pt --lmin 4 --lmax 30 --probes data/probes_olmo.jsonl --no_store

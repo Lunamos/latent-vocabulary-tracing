@@ -1,0 +1,15 @@
+# size-axis behavior: AIME24/25 avg@4, 30k tokens, MATH-500 subset
+q17_base      | Qwen/Qwen3-1.7B-Base
+q17_it        | Qwen/Qwen3-1.7B
+q17_sft_ot3   | Thinking-Space/Qwen3-1.7B-SFT
+q17_opd_dapo  | Thinking-Space/Qwen3-1.7B-Base-OPD
+q17_opd_deepmath | boyanbiji/Qwen3-1.7B-OPD-step120
+q17_grpo_end  | logan7000/grpo-qwen3-1p7b-math345-end
+q17_opsa      | Tuwhy/Qwen3-1.7B-OPSA
+q4_base       | Qwen/Qwen3-4B-Base
+q4_it         | Qwen/Qwen3-4B
+q4_think2507  | Qwen/Qwen3-4B-Thinking-2507
+q4_grpo_ts    | Thinking-Space/Qwen3-4B-Base-GRPO
+q4_opsa       | Tuwhy/Qwen3-4B-OPSA
+q4_spiral_s22 | caiyuchen/Spiral-step-22
+q4_capsd_rand8k | AmberYifan/capsd-qwen3-numina-Qwen3-4B-Base-math_random_b8000_s0

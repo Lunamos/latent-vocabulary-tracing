@@ -1,0 +1,46 @@
+# TAG | MODEL_A (reference) | MODEL_B (comparison) [| extra readout args]
+# All read with the frozen Qwen3-8B-Base lens (repro/lenses/base_merged.pt). Tag = slug of B.
+# --- official + distillation channel (Base-derived)
+it            | Qwen/Qwen3-8B-Base | Qwen/Qwen3-8B
+r1distill     | Qwen/Qwen3-8B-Base | deepseek-ai/DeepSeek-R1-0528-Qwen3-8B
+klear_sft     | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-Reasoner-8B-SFT
+klear_rl      | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-Reasoner-8B
+# --- Nemotron-Cascade stage chain (Base-derived)
+casc_sft      | Qwen/Qwen3-8B-Base | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-SFT
+casc_rlhf     | Qwen/Qwen3-8B-Base | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-RLHF
+casc_ifrl     | Qwen/Qwen3-8B-Base | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-IFRL
+casc_mathrl   | Qwen/Qwen3-8B-Base | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-MathRL
+casc_coderl   | Qwen/Qwen3-8B-Base | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-CodeRL
+casc_final    | Qwen/Qwen3-8B-Base | nvidia/Nemotron-Cascade-8B
+# --- zero-RL from Base
+dapo27        | Qwen/Qwen3-8B-Base | caiyuchen/DAPO-step-27
+dapo13        | Qwen/Qwen3-8B-Base | caiyuchen/DAPO-step-13
+# --- other Base-derived arms
+xcoder_sft    | Qwen/Qwen3-8B-Base | IIGroup/X-Coder-SFT-Qwen3-8B
+xcoder_rl     | Qwen/Qwen3-8B-Base | IIGroup/X-Coder-RL-Qwen3-8B
+oda_math      | Qwen/Qwen3-8B-Base | OpenDataArena/Qwen3-8B-ODA-Math-460k
+megascience   | Qwen/Qwen3-8B-Base | MegaScience/Qwen3-8B-MegaScience
+stepfun_rlvr  | Qwen/Qwen3-8B-Base | stepfun-ai/RLVR-8B-0926
+pacore        | Qwen/Qwen3-8B-Base | stepfun-ai/PaCoRe-8B
+rulereasoner  | Qwen/Qwen3-8B-Base | RuleReasoner/RuleReasoner-8B
+# --- agentic (IT-derived): read vs Base (total write) AND vs IT (agentic increment)
+ota_sft       | Qwen/Qwen3-8B-Base | open-thoughts/OpenThinker-Agent-v1-SFT
+ota_rl        | Qwen/Qwen3-8B-Base | open-thoughts/OpenThinker-Agent-v1
+sera          | Qwen/Qwen3-8B-Base | allenai/SERA-8B
+orchestrator  | Qwen/Qwen3-8B-Base | nvidia/Nemotron-Orchestrator-8B
+webexplorer   | Qwen/Qwen3-8B-Base | hkust-nlp/WebExplorer-8B
+it_ota_sft    | Qwen/Qwen3-8B | open-thoughts/OpenThinker-Agent-v1-SFT | --no_store
+it_ota_rl     | Qwen/Qwen3-8B | open-thoughts/OpenThinker-Agent-v1 | --no_store
+it_sera       | Qwen/Qwen3-8B | allenai/SERA-8B | --no_store
+it_orchestrator | Qwen/Qwen3-8B | nvidia/Nemotron-Orchestrator-8B | --no_store
+it_webexplorer | Qwen/Qwen3-8B | hkust-nlp/WebExplorer-8B | --no_store
+# --- stage increments (SFT -> RL) read directly
+klear_sft2rl  | Kwai-Klear/Klear-Reasoner-8B-SFT | Kwai-Klear/Klear-Reasoner-8B | --no_store
+xcoder_sft2rl | IIGroup/X-Coder-SFT-Qwen3-8B | IIGroup/X-Coder-RL-Qwen3-8B | --no_store
+casc_sft2rlhf | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-SFT | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-RLHF | --no_store
+casc_rlhf2ifrl | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-RLHF | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-IFRL | --no_store
+casc_ifrl2mathrl | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-IFRL | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-MathRL | --no_store
+casc_mathrl2coderl | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-MathRL | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-CodeRL | --no_store
+casc_coderl2final | nvidia/Nemotron-Cascade-8B-Intermediate-ckpts::Nemotron-Cascade-8B-CodeRL | nvidia/Nemotron-Cascade-8B | --no_store
+stepfun_rlvr2pacore | stepfun-ai/RLVR-8B-0926 | stepfun-ai/PaCoRe-8B | --no_store
+ota_sft2rl    | open-thoughts/OpenThinker-Agent-v1-SFT | open-thoughts/OpenThinker-Agent-v1 | --no_store

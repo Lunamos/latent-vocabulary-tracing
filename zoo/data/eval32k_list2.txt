@@ -1,0 +1,2 @@
+pacore        | stepfun-ai/PaCoRe-8B
+klear_think   | Kwai-Klear/Klear-Qwen3-Thinking-Preview

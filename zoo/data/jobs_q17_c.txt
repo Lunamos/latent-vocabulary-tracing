@@ -1,0 +1,1 @@
+q17_base2frpo_dapo | Qwen/Qwen3-1.7B-Base | FRPO/qwen3-1.7b-a9_dapo-dapo-noKL-clip0.2-mb4-eta100-bs256x5-n2-r3 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26

@@ -1,0 +1,3 @@
+# re-run with full stores (for H5 agentic-format content tables): agentic increments read from IT
+it_ota_sft_store | Qwen/Qwen3-8B | open-thoughts/OpenThinker-Agent-v1-SFT
+it_sera_store    | Qwen/Qwen3-8B | allenai/SERA-8B

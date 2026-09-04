@@ -1,0 +1,8 @@
+# extra Qwen3-8B-Base descendants (breadth): general chat SFT, medical, kernel RL pair, distil->rlvr pair, second SFT->RL lineage
+blossom       | Qwen/Qwen3-8B-Base | Azure99/Blossom-V6.1-8B | --no_store
+huatuo        | Qwen/Qwen3-8B-Base | FreedomIntelligence/HuatuoGPT-3-8B | --no_store
+drkernel_sft  | Qwen/Qwen3-8B-Base | hkust-nlp/drkernel-8b-coldstart | --no_store
+drkernel_rl   | Qwen/Qwen3-8B-Base | hkust-nlp/drkernel-8b | --no_store
+sutra_distil  | Qwen/Qwen3-8B-Base | espressovi/SUTRA-qwen3-8b-distil | --no_store
+sutra_rlvr    | Qwen/Qwen3-8B-Base | espressovi/SUTRA-qwen3-8b-rlvr | --no_store
+klear_think   | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-Qwen3-Thinking-Preview | --no_store

@@ -1,0 +1,32 @@
+tmax_sft2rl8b_s500 | allenai/tmax-sft-8b | allenai/tmax-8b@step_500 | --no_store
+tmax_sft2rl8b_s400 | allenai/tmax-sft-8b | allenai/tmax-8b@step_400 | --no_store
+tmax_sft2rl8b_s200 | allenai/tmax-sft-8b | allenai/tmax-8b@step_200 | --no_store
+tmax_sft2rl8b_s100 | allenai/tmax-sft-8b | allenai/tmax-8b@step_100 | --no_store
+opd_sft2opd    | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3 | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3-OPD-step200-Qwen3-32B-OpenThoughts3
+opd_step200    | Qwen/Qwen3-8B-Base | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3-OPD-step200-Qwen3-32B-OpenThoughts3
+opd_sft3000    | Qwen/Qwen3-8B-Base | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3
+it_seta_rl     | Qwen/Qwen3-8B | camel-ai/Qwen3-8B-SETA-Env-RL
+seta_rl        | Qwen/Qwen3-8B-Base | camel-ai/Qwen3-8B-SETA-Env-RL | --no_store
+tmax_sft2rl8b  | allenai/tmax-sft-8b | allenai/tmax-8b
+it_tmax_sft8b  | Qwen/Qwen3-8B | allenai/tmax-sft-8b
+tmax_sft8b     | Qwen/Qwen3-8B-Base | allenai/tmax-sft-8b | --no_store
+sweagile_sft2rl | KDEGroup/SWE-AGILE-SFT-8B | KDEGroup/SWE-AGILE-RL-8B
+it_sweagile_sft | Qwen/Qwen3-8B | KDEGroup/SWE-AGILE-SFT-8B
+sweagile_rl    | Qwen/Qwen3-8B-Base | KDEGroup/SWE-AGILE-RL-8B | --no_store
+sweagile_sft   | Qwen/Qwen3-8B-Base | KDEGroup/SWE-AGILE-SFT-8B | --no_store
+ota2_sft2rl    | open-thoughts/OpenThinkerAgent-8B-ColdStartSFTForRL | open-thoughts/OpenThinkerAgent-8B-RL
+it_ota2_sft    | Qwen/Qwen3-8B | open-thoughts/OpenThinkerAgent-8B-ColdStartSFTForRL
+ota2_rl        | Qwen/Qwen3-8B-Base | open-thoughts/OpenThinkerAgent-8B-RL | --no_store
+ota2_sft       | Qwen/Qwen3-8B-Base | open-thoughts/OpenThinkerAgent-8B-ColdStartSFTForRL | --no_store
+agentforge_sft2rl | Kwai-Klear/Klear-AgentForge-8B-SFT | Kwai-Klear/Klear-AgentForge-8B
+it_agentforge_sft | Qwen/Qwen3-8B | Kwai-Klear/Klear-AgentForge-8B-SFT
+agentforge_rl  | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-AgentForge-8B
+agentforge_sft | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-AgentForge-8B-SFT
+it_terminal_lego | Qwen/Qwen3-8B | Lego-X/Terminal-Lego-Qwen3-8B
+terminal_lego  | Qwen/Qwen3-8B-Base | Lego-X/Terminal-Lego-Qwen3-8B | --no_store
+it_nemo_terminal | Qwen/Qwen3-8B | nvidia/Nemotron-Terminal-8B
+nemo_terminal  | Qwen/Qwen3-8B-Base | nvidia/Nemotron-Terminal-8B
+it_sera_ga     | Qwen/Qwen3-8B | allenai/SERA-8B-GA
+sera_ga        | Qwen/Qwen3-8B-Base | allenai/SERA-8B-GA | --no_store
+it_swelego     | Qwen/Qwen3-8B | SWE-Lego/SWE-Lego-Qwen3-8B
+swelego        | Qwen/Qwen3-8B-Base | SWE-Lego/SWE-Lego-Qwen3-8B

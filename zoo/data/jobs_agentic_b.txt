@@ -1,0 +1,14 @@
+it_swelego     | Qwen/Qwen3-8B | SWE-Lego/SWE-Lego-Qwen3-8B
+it_sera_ga     | Qwen/Qwen3-8B | allenai/SERA-8B-GA
+it_nemo_terminal | Qwen/Qwen3-8B | nvidia/Nemotron-Terminal-8B
+it_terminal_lego | Qwen/Qwen3-8B | Lego-X/Terminal-Lego-Qwen3-8B
+agentforge_rl  | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-AgentForge-8B
+agentforge_sft2rl | Kwai-Klear/Klear-AgentForge-8B-SFT | Kwai-Klear/Klear-AgentForge-8B
+ota2_rl        | Qwen/Qwen3-8B-Base | open-thoughts/OpenThinkerAgent-8B-RL | --no_store
+ota2_sft2rl    | open-thoughts/OpenThinkerAgent-8B-ColdStartSFTForRL | open-thoughts/OpenThinkerAgent-8B-RL
+sweagile_rl    | Qwen/Qwen3-8B-Base | KDEGroup/SWE-AGILE-RL-8B | --no_store
+sweagile_sft2rl | KDEGroup/SWE-AGILE-SFT-8B | KDEGroup/SWE-AGILE-RL-8B
+it_tmax_sft8b  | Qwen/Qwen3-8B | allenai/tmax-sft-8b
+seta_rl        | Qwen/Qwen3-8B-Base | camel-ai/Qwen3-8B-SETA-Env-RL | --no_store
+opd_sft3000    | Qwen/Qwen3-8B-Base | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3
+opd_sft2opd    | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3 | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3-OPD-step200-Qwen3-32B-OpenThoughts3

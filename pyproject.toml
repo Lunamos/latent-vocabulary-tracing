@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "latent-vocabulary-tracing"
+version = "0.1.0"
+description = "Layer-resolved vocabulary traces for comparing post-trained language models"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  {name = "Lunamos", email = "lunamos.thu@gmail.com"},
+]
+dependencies = [
+  "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+research = [
+  "huggingface-hub>=0.25",
+  "matplotlib>=3.8",
+  "torch>=2.2",
+  "transformers>=4.45",
+  "wordcloud>=1.9",
+]
+dev = [
+  "pytest>=8",
+  "ruff>=0.6",
+]
+
+[project.scripts]
+lvt = "latent_vocabulary_tracing.cli:main"
+
+[project.urls]
+Repository = "https://github.com/Lunamos/latent-vocabulary-tracing"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

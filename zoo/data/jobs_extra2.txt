@@ -1,0 +1,3 @@
+# direct SFT->RL increments for the extra descendants (weights re-downloaded by stream_pairs)
+sutra_distil2rlvr | espressovi/SUTRA-qwen3-8b-distil | espressovi/SUTRA-qwen3-8b-rlvr | --no_store
+drkernel_sft2rl   | hkust-nlp/drkernel-8b-coldstart | hkust-nlp/drkernel-8b | --no_store

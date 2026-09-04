@@ -1,0 +1,9 @@
+it_swesmith_316 | Qwen/Qwen3-8B | laion/swesmith-316__Qwen3-8B | --lens ../repro/lenses/base_merged.pt --no_store
+it_swesmith_1000 | Qwen/Qwen3-8B | laion/swesmith-1000__Qwen3-8B | --lens ../repro/lenses/base_merged.pt --no_store
+it_swesmith_3160 | Qwen/Qwen3-8B | laion/swesmith-3160__Qwen3-8B | --lens ../repro/lenses/base_merged.pt --no_store
+it_swesmith_10000 | Qwen/Qwen3-8B | laion/swesmith-10000__Qwen3-8B | --lens ../repro/lenses/base_merged.pt --no_store
+it_swesmith_31600 | Qwen/Qwen3-8B | laion/swesmith-31600-opt100k__Qwen3-8B | --lens ../repro/lenses/base_merged.pt --no_store
+it_swesmith_100000 | Qwen/Qwen3-8B | laion/swesmith-100000-opt100k__Qwen3-8B | --lens ../repro/lenses/base_merged.pt --no_store
+it_seraL_316 | Qwen/Qwen3-8B | laion/sera-316__Qwen3-8B | --lens ../repro/lenses/base_merged.pt --no_store
+it_seraL_3160 | Qwen/Qwen3-8B | laion/sera-3160__Qwen3-8B | --lens ../repro/lenses/base_merged.pt --no_store
+it_seraL_10000 | Qwen/Qwen3-8B | laion/sera-10000__Qwen3-8B | --lens ../repro/lenses/base_merged.pt --no_store

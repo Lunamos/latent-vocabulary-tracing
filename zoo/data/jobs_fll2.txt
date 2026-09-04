@@ -1,0 +1,10 @@
+# second batch of full-LL stores for the taxonomy section
+r1distill_fll     | Qwen/Qwen3-8B-Base | deepseek-ai/DeepSeek-R1-0528-Qwen3-8B | --full_LL
+xcoder_sft_fll    | Qwen/Qwen3-8B-Base | IIGroup/X-Coder-SFT-Qwen3-8B | --full_LL
+opd_sft3000_fll   | Qwen/Qwen3-8B-Base | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3 | --full_LL
+opd_sft2opd_fll   | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3 | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3-OPD-step200-Qwen3-32B-OpenThoughts3 | --full_LL
+tmax_sft2rl8b_fll | allenai/tmax-sft-8b | allenai/tmax-8b | --full_LL
+ota2_sft2rl_fll   | open-thoughts/OpenThinkerAgent-8B-ColdStartSFTForRL | open-thoughts/OpenThinkerAgent-8B-RL | --full_LL
+q17_opd_deepmath_fll | Qwen/Qwen3-1.7B-Base | boyanbiji/Qwen3-1.7B-OPD-step120 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL
+q17_ultrachat_fll | Qwen/Qwen3-1.7B-Base | ayushshah/Qwen3-1.7B-UltraChat-SFT | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL
+q17_sft_lora400k_fll | Qwen/Qwen3-1.7B-Base | boyanbiji/qwen3-1.7B-sft-lora128-400k | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL

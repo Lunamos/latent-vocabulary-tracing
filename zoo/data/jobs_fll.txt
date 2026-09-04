@@ -1,0 +1,11 @@
+# full-LL stores (cross logits) to cross-check the J-lens vocabulary taxonomy (CJK flip at 1.7B) with the logit lens
+q17_grpo_best_fll | Qwen/Qwen3-1.7B-Base | logan7000/grpo-qwen3-1p7b-math345-best | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL
+q17_ttrl_best_fll | Qwen/Qwen3-1.7B-Base | logan7000/unmaj-qwen3-1p7b-math345-best | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL
+q17_it_fll        | Qwen/Qwen3-1.7B-Base | Qwen/Qwen3-1.7B | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL
+q17_sft_ot3_fll   | Qwen/Qwen3-1.7B-Base | Thinking-Space/Qwen3-1.7B-SFT | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL
+q17_opsa_fll      | Qwen/Qwen3-1.7B-Base | Tuwhy/Qwen3-1.7B-OPSA | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL
+q17_opd_dapo_fll  | Qwen/Qwen3-1.7B-Base | Thinking-Space/Qwen3-1.7B-Base-OPD | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL
+q17_capsd_cap4k_fll | Qwen/Qwen3-1.7B-Base | AmberYifan/capsd-Qwen3-1.7B-Base-math_cap_b4000_s0 | --lens /localscratch/zjin350/Documents/jlen/repro/lenses/qwen3-17b_merged.pt --lmin 5 --lmax 26 --full_LL
+it_fll            | Qwen/Qwen3-8B-Base | Qwen/Qwen3-8B | --full_LL
+dapo27_fll        | Qwen/Qwen3-8B-Base | caiyuchen/DAPO-step-27 | --full_LL
+klear_sft_fll     | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-Reasoner-8B-SFT | --full_LL
