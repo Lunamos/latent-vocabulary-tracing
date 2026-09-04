@@ -75,6 +75,9 @@ lvt token classify --scheme functional ' therefore' '\boxed' ' equation'
 
 # Use the confirmatory cross-domain classes (math, code, and agent/tool traces).
 lvt token classify --scheme trace ' therefore' '\frac' ' stderr' 'def'
+
+# Audit which surface classes actually occur in each probe domain.
+python zoo/scripts/audit_probe_taxonomy.py Qwen/Qwen3-8B-Base zoo/data/probes.jsonl
 ```
 
 ## Python API
