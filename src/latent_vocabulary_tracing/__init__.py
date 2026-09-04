@@ -18,7 +18,12 @@ from .metrics import (
     vocabulary_write_amount,
     weighted_direction_alignment,
 )
-from .provenance import canonicalize_model_config, model_config_hash, stable_json_hash
+from .provenance import (
+    canonicalize_model_config,
+    model_config_hash,
+    snapshot_revision_from_path,
+    stable_json_hash,
+)
 from .registry import EdgeRecord, EdgeRegistry, load_edge_registry
 from .spans import infer_role_spans, validate_role_spans
 from .summary import SummaryContract, load_summary, summary_view, validate_summary_contract
@@ -65,6 +70,7 @@ __all__ = [
     "topk_jaccard",
     "summary_view",
     "select_normalized_depth_layers",
+    "snapshot_revision_from_path",
     "validate_summary_contract",
     "validate_architecture_pair",
     "validate_role_spans",

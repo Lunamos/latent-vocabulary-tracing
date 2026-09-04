@@ -85,6 +85,8 @@ ap.add_argument("--model-a-id", default="", help="reported parent identity when 
 ap.add_argument(
     "--model-b-id", default="", help="reported descendant identity when loading locally"
 )
+ap.add_argument("--model-a-revision", default="", help="resolved parent snapshot revision")
+ap.add_argument("--model-b-revision", default="", help="resolved descendant snapshot revision")
 ap.add_argument("--lens", default=f"{ROOT}/repro/lenses/base_merged.pt")
 ap.add_argument(
     "--lens-parent-id",
@@ -1127,7 +1129,9 @@ for kind in sorted(kinds):
     agg[kind] = a
 
 
-def checkpoint_revision(name, model):
+def checkpoint_revision(name, model, explicit=""):
+    if explicit:
+        return explicit
     revision = getattr(model.config, "_commit_hash", None)
     if revision:
         return revision
@@ -1137,13 +1141,13 @@ def checkpoint_revision(name, model):
     return None
 
 
-def model_metadata(identity, load_source, model):
+def model_metadata(identity, load_source, model, revision=""):
     config = text_config(model)
     _, layers, norm, _ = _parts(model)
     rope = getattr(config, "rope_scaling", None) or getattr(config, "rope_parameters", None)
     return {
         "id": identity,
-        "revision": checkpoint_revision(load_source, model),
+        "revision": checkpoint_revision(load_source, model, revision),
         "architecture": type(model).__name__,
         "hidden_size": int(config.hidden_size),
         "n_layers": len(layers),
@@ -1160,8 +1164,8 @@ summary = {
     "model_a": model_a_id,
     "model_b": model_b_id,
     "models": {
-        "a": model_metadata(model_a_id, args.model_a, model_a),
-        "b": model_metadata(model_b_id, args.model_b, model_b),
+        "a": model_metadata(model_a_id, args.model_a, model_a, args.model_a_revision),
+        "b": model_metadata(model_b_id, args.model_b, model_b, args.model_b_revision),
     },
     "tag": args.tag,
     "edge_registry": edge_registry_binding,

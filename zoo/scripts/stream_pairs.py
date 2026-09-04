@@ -34,6 +34,7 @@ ALLOW = ("*.safetensors", "*.json", "*.txt", "*.jinja", "*.model", "*.py", "*.ti
 sys.path.insert(0, str(ROOT / "src"))
 
 from latent_vocabulary_tracing.manifest import atomic_claim, load_manifest  # noqa: E402
+from latent_vocabulary_tracing.provenance import snapshot_revision_from_path  # noqa: E402
 from latent_vocabulary_tracing.registry import load_edge_registry  # noqa: E402
 from latent_vocabulary_tracing.summary import SummaryContract, load_summary  # noqa: E402
 
@@ -53,6 +54,7 @@ class FetchedModel:
     source_path: Path
     overlay_path: Path | None
     spec: ModelSpec
+    revision: str | None = None
 
 
 def parse_args() -> argparse.Namespace:
@@ -267,7 +269,13 @@ def subdirectory_model_view(snapshot: Path, subdirectory: str) -> tuple[Path, Pa
 def fetch(spec: ModelSpec, minimum_disk_gib: float, poll_seconds: int) -> FetchedModel | None:
     if spec.repository is None:
         path = Path(spec.original).resolve()
-        return FetchedModel(path=path, source_path=path, overlay_path=None, spec=spec)
+        return FetchedModel(
+            path=path,
+            source_path=path,
+            overlay_path=None,
+            spec=spec,
+            revision=snapshot_revision_from_path(path),
+        )
     wait_for_disk(minimum_disk_gib, poll_seconds)
     for attempt in range(1, 4):
         try:
@@ -297,6 +305,7 @@ def fetch(spec: ModelSpec, minimum_disk_gib: float, poll_seconds: int) -> Fetche
                 source_path=source_path,
                 overlay_path=overlay_path,
                 spec=spec,
+                revision=snapshot_revision_from_path(snapshot),
             )
         except Exception as error:  # network/model repositories fail heterogeneously
             log(
@@ -397,6 +406,10 @@ def run_job(job, args: argparse.Namespace, keep: set[str]) -> None:
             "--model-b-id",
             descendant.spec.identity,
         ]
+        if parent.revision is not None:
+            command.extend(("--model-a-revision", parent.revision))
+        if descendant.revision is not None:
+            command.extend(("--model-b-revision", descendant.revision))
         if args.edge_registry is not None:
             command.extend(("--edge-registry", str(args.edge_registry.resolve())))
         command.extend(job.extra_args)

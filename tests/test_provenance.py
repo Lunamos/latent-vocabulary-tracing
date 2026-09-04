@@ -1,6 +1,7 @@
 from latent_vocabulary_tracing.provenance import (
     canonicalize_model_config,
     model_config_hash,
+    snapshot_revision_from_path,
     stable_json_hash,
 )
 
@@ -32,3 +33,11 @@ def test_config_canonicalization_is_recursive_and_does_not_mutate_input():
 
 def test_stable_json_hash_ignores_mapping_order():
     assert stable_json_hash({"b": 2, "a": 1}) == stable_json_hash({"a": 1, "b": 2})
+
+
+def test_snapshot_revision_is_extracted_only_from_content_addressed_path():
+    revision = "68c46c4b3498877f3ef123c856ecfde50c39f404"
+    path = f"/cache/models--org--name/snapshots/{revision}/model"
+    assert snapshot_revision_from_path(path) == revision
+    assert snapshot_revision_from_path("/cache/models--org--name/refs/main") is None
+    assert snapshot_revision_from_path("/cache/snapshots/not-a-revision/model") is None
