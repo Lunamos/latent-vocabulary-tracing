@@ -37,6 +37,7 @@ def valid_summary() -> dict:
             "top_change_support": "full_vocabulary",
             "top_change_ranking": "net_probability_delta_after_averaging",
             "representative_layer_rule": "maximum_response_kl_ba_within_depth_summary",
+            "taxonomy_hash": "taxonomy",
         },
         "stored_support_dtype": "fp32",
         "models": {
@@ -53,6 +54,11 @@ def valid_summary() -> dict:
             for key in ("a", "b")
         },
         "probe_hash": "probes",
+        "analysis_provenance": {
+            "revision": "abc123",
+            "dirty": False,
+            "runner_hash": "runner",
+        },
         "tokenizer_note": {
             "id_piece_mismatches": 0,
             "tokenizer_hash_a": "tokenizer",

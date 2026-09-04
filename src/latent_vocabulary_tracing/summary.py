@@ -177,6 +177,13 @@ def validate_summary_contract(
                     errors.append(f"model {model_key!r} lacks provenance field {field!r}")
         if not summary.get("probe_hash"):
             errors.append("probe_hash is absent")
+        analysis = summary.get("analysis_provenance", {})
+        if not analysis.get("revision"):
+            errors.append("analysis code revision is absent")
+        if analysis.get("dirty") is not False:
+            errors.append("analysis code was not run from a clean revision")
+        if not analysis.get("runner_hash"):
+            errors.append("analysis runner hash is absent")
         tokenizer = summary.get("tokenizer_note", {})
         if tokenizer.get("id_piece_mismatches") != 0:
             errors.append("probe token ids were not verified identical across tokenizers")
@@ -189,6 +196,10 @@ def validate_summary_contract(
             lens_prompts = summary.get("lens_n_prompts")
             if not isinstance(lens_prompts, int) or lens_prompts <= 0:
                 errors.append("Jlens fit prompt count is absent or zero")
+        if contract.require_category_statistics:
+            category = summary.get("category_statistics", {})
+            if not category.get("taxonomy_hash"):
+                errors.append("taxonomy implementation hash is absent")
 
     if errors:
         tag = summary.get("tag", "<unknown>")

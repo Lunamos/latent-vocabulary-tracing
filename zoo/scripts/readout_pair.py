@@ -24,6 +24,7 @@ import argparse
 import hashlib
 import json
 import os
+import subprocess
 import sys
 import time
 
@@ -35,6 +36,7 @@ ZOO = os.environ.get("ZOO", os.path.dirname(os.path.dirname(os.path.abspath(__fi
 ROOT = os.path.dirname(ZOO)
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
+import latent_vocabulary_tracing.taxonomy as taxonomy_module  # noqa: E402
 from latent_vocabulary_tracing.taxonomy import (  # noqa: E402
     TRACE_CATEGORIES,
     categorize_trace_token,
@@ -164,6 +166,26 @@ def sha256_file(path):
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def repository_state():
+    revision = subprocess.run(
+        ["git", "-C", ROOT, "rev-parse", "HEAD"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    status = subprocess.run(
+        ["git", "-C", ROOT, "status", "--porcelain", "--untracked-files=normal"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    return {
+        "revision": revision.stdout.strip() if revision.returncode == 0 else None,
+        "dirty": bool(status.stdout.strip()) if status.returncode == 0 else None,
+        "runner_hash": sha256_file(__file__),
+    }
 
 
 def text_config(model):
@@ -865,6 +887,7 @@ summary = {
     "layers": LAYERS,
     "probes": args.probes,
     "probe_hash": sha256_file(args.probes),
+    "analysis_provenance": repository_state(),
     "support_k": args.support_k,
     "analysis_dtype": "fp32",
     "stored_support_dtype": "none" if args.no_store else (
@@ -873,6 +896,9 @@ summary = {
     "category_statistics": {
         "enabled": args.category_stats,
         "taxonomy": list(TRACE_CATEGORIES) if args.category_stats else None,
+        "taxonomy_hash": (
+            sha256_file(taxonomy_module.__file__) if args.category_stats else None
+        ),
         "dtype": "fp32" if args.category_stats else None,
         "support": "full_vocabulary" if args.category_stats else None,
         "role_conditioned": args.category_stats,
