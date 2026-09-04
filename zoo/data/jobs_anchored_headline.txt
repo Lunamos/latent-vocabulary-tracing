@@ -1,0 +1,10 @@
+# Parent-decoder reruns for paper headline edges.  Logit lens only: this avoids
+# using a Jacobian transport fitted on a different parent for incremental edges.
+it_anchored | Qwen/Qwen3-8B-Base | Qwen/Qwen3-8B | --decoder parent --no_J --layers 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34 --no_store
+klear_sft_anchored | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-Reasoner-8B-SFT | --decoder parent --no_J --layers 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34 --no_store
+dapo27_anchored | Qwen/Qwen3-8B-Base | caiyuchen/DAPO-step-27 | --decoder parent --no_J --layers 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34 --no_store
+klear_sft2rl_anchored | Kwai-Klear/Klear-Reasoner-8B-SFT | Kwai-Klear/Klear-Reasoner-8B | --decoder parent --no_J --layers 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34 --no_store
+opd_sft2opd_anchored | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3 | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3-OPD-step200-Qwen3-32B-OpenThoughts3 | --decoder parent --no_J --layers 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34 --no_store
+q17_capsd_cap4k_anchored | Qwen/Qwen3-1.7B-Base | AmberYifan/capsd-Qwen3-1.7B-Base-math_cap_b4000_s0 | --decoder parent --no_J --layers 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26 --full_LL
+q17_opd_dapo_anchored | Qwen/Qwen3-1.7B-Base | Thinking-Space/Qwen3-1.7B-Base-OPD | --decoder parent --no_J --layers 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26 --full_LL
+q17_grpo_best_anchored | Qwen/Qwen3-1.7B-Base | logan7000/grpo-qwen3-1p7b-math345-best | --decoder parent --no_J --layers 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26 --full_LL

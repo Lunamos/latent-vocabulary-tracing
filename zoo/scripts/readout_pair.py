@@ -1,9 +1,12 @@
-"""Unified fixed-ruler readout for one (reference, comparison) model pair.
+"""Unified vocabulary readout for one (reference, comparison) model pair.
 
 One HF forward per model per probe (output_hidden_states), then for every lens layer:
   J  : Jacobian lens  = unembed(h_l @ J_l^T)   (frozen lens J fitted on the reference base)
   LL : logit lens     = unembed(h_l)
-and the model's own final logits ("final"). Metrics per position, exactly as opd/scripts/diff_lens.py:
+The default preserves legacy model-native decoders. ``--decoder parent`` applies
+the reference model's final normalization and unembedding to both states, which
+is the primary parent-anchored LVT estimand. ``final`` always compares the two
+models' actual output logits. Metrics per position are:
   kl_ab, kl_ba, js, jaccard@10, top-50 ids/vals of both, cross logits (a_at_b, b_at_a), lse.
 Plus hidden-state stats per layer (cos, linear CKA, dnorm_rel) as in opd/explore/hidden_cka.py, and
 lens faithfulness KL(final_X || J_X), KL(final_X || LL_X) for X in {A, B}.
@@ -33,6 +36,12 @@ ap.add_argument("--no_store", action="store_true", help="only write the summary 
 ap.add_argument("--full_LL", action="store_true", help="store LL cross logits too (top-k, a_at_b/b_at_a) instead of the slim top-20 store")
 ap.add_argument("--no_J", action="store_true", help="no Jacobian lens for this architecture: logit lens + final + hidden only")
 ap.add_argument("--layers", default="", help="explicit layer list (e.g. 4,5,...,30) when --no_J; default = lens layers")
+ap.add_argument(
+    "--decoder",
+    choices=("native", "parent"),
+    default="native",
+    help="decode each model natively (legacy) or decode both states with model A",
+)
 args = ap.parse_args()
 dev = "cuda:0"
 t0 = time.time()
@@ -57,6 +66,7 @@ def load(name):
 
 tok = transformers.AutoTokenizer.from_pretrained(args.model_a)
 model_a, model_b = load(args.model_a), load(args.model_b)
+decoder_b = model_a if args.decoder == "parent" else model_b
 tok_b = transformers.AutoTokenizer.from_pretrained(args.model_b)
 # Protocol: every model is read on the SAME token ids (tokenized by the reference tokenizer). Only require that
 # the two tokenizers agree on the id of every shared token (some descendants re-register chat specials, e.g. R1-distill).
@@ -152,7 +162,7 @@ with torch.no_grad():
             dnr = float((hb - ha).norm(dim=-1).mean() / (ha.norm(dim=-1).mean() + 1e-12))
             rec["hidden"][str(l)] = {"cos": cos, "cka": cka, "dnorm_rel": dnr}
             for kind, xa, xb in ((("J", ha @ J[l].T, hb @ J[l].T),) if J is not None else ()) + (("LL", ha, hb),):
-                A, B = unembed(model_a, xa), unembed(model_b, xb)
+                A, B = unembed(model_a, xa), unembed(decoder_b, xb)
                 m = pair_metrics(A, B, args.topk)
                 rec["per_layer"][kind][str(l)] = {
                     k: float(m[k].mean()) for k in ("kl_ab", "kl_ba", "js", "jaccard")} | {
@@ -215,13 +225,15 @@ for kind in sorted(kinds):
     a["nll"] = {x: sum(r["nll"][x] for r in rs) / len(rs) for x in ("a", "b")}
     agg[kind] = a
 summary = {"model_a": args.model_a, "model_b": args.model_b, "tag": args.tag, "lens": args.lens,
-           "decoder_mode": "native_per_model",
+           "decoder_mode": "parent_anchored" if args.decoder == "parent" else "native_per_model",
+           "final_decoder_mode": "native_per_model",
            "lens_n_prompts": int(lens["n_prompts"]), "readouts": list(READOUTS), "layers": LAYERS, "probes": args.probes,
            "seconds": time.time() - t0, "tokenizer_note": tok_note, "agg": agg, "records": records}
 json.dump(summary, open(os.path.join(args.out, f"ro_{args.tag}_summary.json"), "w"), indent=1)
 if not args.no_store:
     torch.save({"records": records, "store": store, "layers": LAYERS, "model_a": args.model_a,
-                "model_b": args.model_b, "lens": args.lens}, os.path.join(args.out, f"ro_{args.tag}.pt"))
+                "model_b": args.model_b, "lens": args.lens, "decoder_mode": summary["decoder_mode"]},
+               os.path.join(args.out, f"ro_{args.tag}.pt"))
 # one-line digest
 def dig(kind):
     a = agg.get(kind)
