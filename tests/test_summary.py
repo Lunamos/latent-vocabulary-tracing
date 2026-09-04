@@ -43,6 +43,10 @@ def valid_summary() -> dict:
         "decoder_mode": "parent_anchored",
         "primary_contrast": "state_parent_decoder",
         "final_decoder_mode": "native_per_model_control",
+        "probe_protocol": {
+            "neutral_control": "chat_matched_continuation",
+            "neutral_source_context_tokens": 48,
+        },
         "category_statistics": {
             "enabled": True,
             "dtype": "fp32",
@@ -120,6 +124,13 @@ def test_contract_rejects_native_or_silent_readout_fallback():
         validate_summary_contract(summary, SummaryContract(readout="LL"))
     with pytest.raises(ValueError, match="readout 'J' absent"):
         validate_summary_contract(valid_summary(), SummaryContract(readout="J"))
+
+
+def test_contract_rejects_raw_text_as_the_primary_neutral_control():
+    summary = valid_summary()
+    summary["probe_protocol"]["neutral_control"] = "raw_wikitext"
+    with pytest.raises(ValueError, match="chat-matched"):
+        validate_summary_contract(summary, SummaryContract(readout="LL"))
 
 
 def test_jlens_contract_requires_named_matching_parent_and_geometry():

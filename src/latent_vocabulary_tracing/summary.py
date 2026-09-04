@@ -32,6 +32,7 @@ class SummaryContract:
     require_category_statistics: bool = False
     require_fp32_store: bool = False
     require_edge_registry: bool = False
+    require_chat_matched_neutral: bool = True
     edge_registry_hash: str | None = None
 
     def __post_init__(self) -> None:
@@ -126,6 +127,13 @@ def validate_summary_contract(
 
     if summary.get("final_decoder_mode") != "native_per_model_control":
         errors.append("final logits are not labelled as a native-per-model control")
+
+    if contract.require_chat_matched_neutral:
+        probe_protocol = summary.get("probe_protocol", {})
+        if probe_protocol.get("neutral_control") != "chat_matched_continuation":
+            errors.append("neutral controls are not chat-matched continuations")
+        if probe_protocol.get("neutral_source_context_tokens") != 48:
+            errors.append("neutral continuation context is not the frozen 48 tokens")
 
     if contract.require_edge_registry or contract.edge_registry_hash is not None:
         binding = summary.get("edge_registry", {})
@@ -310,6 +318,7 @@ def summary_view(summary: dict[str, Any]) -> dict[str, Any]:
         "readouts": summary.get("readouts"),
         "decoder_mode": summary.get("decoder_mode"),
         "primary_contrast": summary.get("primary_contrast"),
+        "neutral_control": summary.get("probe_protocol", {}).get("neutral_control"),
         "probe_count": probe_count,
         "seconds": summary.get("seconds"),
     }

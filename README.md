@@ -38,6 +38,13 @@ keywords—such as `for`, `with`, `from`, `this`, and `new`—remain general
 language. This prevents the vocabulary definition itself from manufacturing a
 code signature.
 
+The primary neutral control is also format matched. Each neutral example uses
+a fixed system instruction and a 48-token WikiText context inside the same
+family-specific chat template as the task probes; only the held-out WikiText
+continuation is scored. Raw, untemplated WikiText is a robustness control, not
+the baseline for task-minus-neutral claims. This prevents chat formatting from
+being mistaken for domain-selective post-training.
+
 ## Install
 
 ```bash
@@ -78,6 +85,10 @@ lvt token classify --scheme trace ' therefore' '\frac' ' stderr' 'def'
 
 # Audit which surface classes actually occur in each probe domain.
 python zoo/scripts/audit_probe_taxonomy.py Qwen/Qwen3-8B-Base zoo/data/probes.jsonl
+
+# Convert an older raw-WikiText probe file before a confirmatory rerun.
+python zoo/scripts/match_neutral_context.py zoo/data/probes.jsonl \
+  Qwen/Qwen3-8B-Base --style qwen
 ```
 
 ## Python API

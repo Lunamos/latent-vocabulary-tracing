@@ -54,3 +54,19 @@ def test_probe_truncated_before_response_is_all_context():
     assert spans["input_context"] == [(0, 6)]
     assert spans["code_specification"] == [(0, 6)]
     assert "model_response" not in spans
+
+
+def test_chat_matched_neutral_separates_context_from_continuation():
+    text = "abcdefgh"
+    spans = infer_role_spans(
+        text,
+        kind="neutral",
+        prompt_len=3,
+        offsets=character_offsets(text),
+    )
+    assert spans == {
+        "input_context": [(0, 3)],
+        "model_response": [(3, 8)],
+        "neutral_context": [(0, 3)],
+        "neutral_text": [(3, 8)],
+    }

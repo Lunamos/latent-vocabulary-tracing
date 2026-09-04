@@ -6,7 +6,8 @@ Kinds (30 each unless overridden):
   code    : HumanEval, first 30 tasks; chat prompt "Complete the function" + prompt, response = canonical solution.
   agent   : OpenThoughts-Agent-v1-SFT terminal trajectories (first 30 with >=3 turns), chat-rendered,
             truncated to MAX_LEN tokens. prompt_len = tokens up to the end of the first user turn.
-  neutral : wikitext[1500:1530] via jlens.examples.load_wikitext_prompts (IDENTICAL to diff_lens).
+  neutral : wikitext[1500:1530] as chat-matched continuation: a fixed instruction
+            and the first 48 source tokens are context, and the remainder is the response.
 
 Text is tokenized by the Qwen3-8B-Base tokenizer (shared by every panel model); all readout scripts
 must tokenize the stored `text` with truncation at MAX_LEN=640 and assert identical ids across models.
@@ -91,9 +92,37 @@ for r in ds.skip(AG_SKIP).take(400):
     if got >= N:
         break
 
-# neutral (verbatim protocol)
+# Neutral continuation. Raw Wikitext from the replication phase is not a
+# suitable main baseline for chat-formatted response spans: it confounds domain
+# with the presence of a user/assistant template. Preserve the source and
+# index, but ask the model to continue from a fixed 48-token prefix.
+NEUTRAL_SYSTEM = "Continue the supplied passage in neutral expository prose."
+NEUTRAL_CONTEXT_TOKENS = 48
 for i, p in enumerate(load_wikitext_prompts(n_prompts=WOFF + N)[WOFF:WOFF + N]):
-    probes.append({"kind": "neutral", "text": p, "prompt_len": 0, "meta": {"idx": WOFF + i}})
+    source_ids = tok.encode(p, add_special_tokens=False)
+    context = tok.decode(source_ids[:NEUTRAL_CONTEXT_TOKENS])
+    continuation = tok.decode(source_ids[NEUTRAL_CONTEXT_TOKENS:])
+    prefix = chat(
+        [
+            {"role": "system", "content": NEUTRAL_SYSTEM},
+            {
+                "role": "user",
+                "content": "Continue this encyclopedia passage:\n\n" + context,
+            },
+        ]
+    )
+    probes.append(
+        {
+            "kind": "neutral",
+            "text": prefix + continuation,
+            "prompt_len": ntok(prefix),
+            "meta": {
+                "idx": WOFF + i,
+                "control": "chat_matched_continuation",
+                "source_context_tokens": NEUTRAL_CONTEXT_TOKENS,
+            },
+        }
+    )
 
 with open(OUT, "w") as f:
     for i, p in enumerate(probes):

@@ -74,7 +74,10 @@ def infer_role_spans(
         if prompt_end < n_tokens:
             add(response_name, (prompt_end, n_tokens))
     elif kind == "neutral":
-        add("neutral_text", (0, n_tokens))
+        if prompt_end:
+            add("neutral_context", (0, prompt_end))
+        if prompt_end < n_tokens:
+            add("neutral_text", (prompt_end, n_tokens))
 
     if kind != "agent":
         return spans
