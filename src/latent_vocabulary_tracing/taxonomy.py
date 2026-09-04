@@ -41,14 +41,15 @@ FUNCTIONAL_CATEGORIES = (
 # with agent/tool and code roles.  Keep ``FUNCTIONAL_CATEGORIES`` stable so the
 # existing 1.7B appendix analysis remains reproducible.
 TRACE_CATEGORIES = (
-    "reasoning_process",
-    "answer_commitment",
-    "mathematical_content",
+    "reasoning_connectors",
+    "answer_markers",
+    "mathematical_lexicon",
+    "ambiguous_formal_lexicon",
     "symbolic_notation",
-    "tool_action",
-    "execution_feedback",
-    "code_content",
-    "presentation",
+    "tool_interface_lexicon",
+    "execution_status_lexicon",
+    "programming_lexicon",
+    "formatting",
     "general_language",
     "other",
 )
@@ -205,6 +206,20 @@ _MATHEMATICAL_CONTENT = {
     "variables",
     "vector",
 }
+_AMBIGUOUS_FORMAL = {
+    "function",
+    "functions",
+    "matrix",
+    "matrices",
+    "operator",
+    "operators",
+    "set",
+    "sets",
+    "variable",
+    "variables",
+    "vector",
+    "vectors",
+}
 _SYMBOLIC_WORDS = {
     "alpha",
     "beta",
@@ -227,30 +242,19 @@ _SYMBOLIC_WORDS = {
     "times",
 }
 _PRESENTATION_WORDS = {"latex"}
-_TOOL_ACTION = {
-    "analysis",
+_TOOL_INTERFACE = {
     "bash",
-    "call",
-    "calls",
     "cd",
     "command",
     "commands",
     "curl",
-    "duration",
-    "execute",
-    "find",
     "git",
     "grep",
-    "inspect",
     "keystrokes",
     "ls",
     "mkdir",
-    "path",
     "pip",
-    "plan",
     "python",
-    "run",
-    "search",
     "shell",
     "sudo",
     "task_complete",
@@ -258,11 +262,8 @@ _TOOL_ACTION = {
     "tool",
     "tools",
     "wget",
-    "workspace",
 }
-_EXECUTION_FEEDBACK = {
-    "complete",
-    "completed",
+_EXECUTION_STATUS = {
     "denied",
     "error",
     "errors",
@@ -397,10 +398,12 @@ def categorize_functional_token(token: str) -> str:
 def categorize_trace_token(token: str) -> str:
     """Assign a token piece to the cross-domain confirmatory taxonomy.
 
-    This classifier remains intentionally surface based: sequence-role masks
-    carry the contextual distinction between tool observations, calls, and
-    continuations.  The extra lexical classes prevent agent protocol and code
-    pieces from disappearing into ``general_language`` or the residual class.
+    This classifier remains intentionally surface based: its names refer to
+    lexical association, never to a hidden cognitive process or executed
+    action. Sequence-role masks carry the contextual distinction between tool
+    observations, calls, and continuations. Ambiguous formal words such as
+    ``function`` and ``set`` are kept separate rather than forced into either
+    mathematics or programming.
     """
 
     if not isinstance(token, str):
@@ -415,23 +418,25 @@ def categorize_trace_token(token: str) -> str:
 
     # Preserve the pilot taxonomy's explicit semantic priorities.
     if lexical in _ANSWER_COMMITMENT:
-        return "answer_commitment"
+        return "answer_markers"
     if lexical in _REASONING_PROCESS:
-        return "reasoning_process"
+        return "reasoning_connectors"
+    if lexical in _AMBIGUOUS_FORMAL:
+        return "ambiguous_formal_lexicon"
     if lexical in _MATHEMATICAL_CONTENT:
-        return "mathematical_content"
+        return "mathematical_lexicon"
     if lexical in _SYMBOLIC_WORDS or _SYMBOLIC.match(token) or command:
         return "symbolic_notation"
-    if lexical in _TOOL_ACTION:
-        return "tool_action"
-    if lexical in _EXECUTION_FEEDBACK:
-        return "execution_feedback"
+    if lexical in _TOOL_INTERFACE:
+        return "tool_interface_lexicon"
+    if lexical in _EXECUTION_STATUS:
+        return "execution_status_lexicon"
 
     coarse = categorize_token(token)
     if coarse == "code":
-        return "code_content"
+        return "programming_lexicon"
     if lexical in _PRESENTATION_WORDS or coarse in {"format", "punct"}:
-        return "presentation"
+        return "formatting"
     if coarse in {"english", "function", "discourse", "latin_piece"}:
         return "general_language"
     return "other"
@@ -456,6 +461,8 @@ def is_displayable_trace_token(token: str) -> bool:
         return False
 
     stripped = token.strip()
+    if re.fullmatch(r"[._][A-Za-z]+", stripped):
+        return False
     lowered = stripped.lower().strip(".,:;!?()[]{}<>\"'`*_~").replace("’", "'")
     command_match = _LATEX_COMMAND.match(token)
     command = command_match.group(1).lower() if command_match else ""
@@ -464,9 +471,10 @@ def is_displayable_trace_token(token: str) -> bool:
         _ANSWER_COMMITMENT
         | _REASONING_PROCESS
         | _MATHEMATICAL_CONTENT
+        | _AMBIGUOUS_FORMAL
         | _SYMBOLIC_WORDS
-        | _TOOL_ACTION
-        | _EXECUTION_FEEDBACK
+        | _TOOL_INTERFACE
+        | _EXECUTION_STATUS
         | CODE_KEYWORDS
     )
     if lexical in named or command or _SYMBOLIC.match(token) or _NUMBER.match(token):
