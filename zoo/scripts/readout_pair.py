@@ -51,7 +51,10 @@ from latent_vocabulary_tracing.probes import (  # noqa: E402
     describe_neutral_protocol,
     validate_probe_record,
 )
-from latent_vocabulary_tracing.provenance import model_config_hash  # noqa: E402
+from latent_vocabulary_tracing.provenance import (  # noqa: E402
+    model_config_hash,
+    snapshot_revision_from_path,
+)
 from latent_vocabulary_tracing.registry import load_edge_registry  # noqa: E402
 from latent_vocabulary_tracing.taxonomy import (  # noqa: E402
     TRACE_CATEGORIES,
@@ -1138,6 +1141,14 @@ def checkpoint_revision(name, model, explicit=""):
     marker = f"{os.sep}snapshots{os.sep}"
     if marker in name:
         return name.split(marker, 1)[1].split(os.sep, 1)[0]
+    try:
+        cached_config = transformers.utils.cached_file(
+            name, "config.json", local_files_only=True
+        )
+    except (OSError, ValueError):
+        cached_config = None
+    if cached_config:
+        return snapshot_revision_from_path(cached_config)
     return None
 
 
