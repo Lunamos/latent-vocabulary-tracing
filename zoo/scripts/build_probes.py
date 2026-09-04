@@ -6,8 +6,9 @@ Kinds (30 each unless overridden):
   code    : HumanEval, first 30 tasks; chat prompt "Complete the function" + prompt, response = canonical solution.
   agent   : OpenThoughts-Agent-v1-SFT terminal trajectories (first 30 with >=3 turns), chat-rendered,
             truncated to MAX_LEN tokens. prompt_len = tokens up to the end of the first user turn.
-  neutral : wikitext[1500:1530] as chat-matched continuation: a fixed instruction
-            and the first 48 source tokens are context, and the remainder is the response.
+  neutral : 30 distinct WikiText articles selected at qualifying-record indices
+            1500 + 97*i; the first 48 source tokens are chat context and the
+            remainder is the teacher-forced response.
 
 Text is tokenized by the Qwen3-8B-Base tokenizer (shared by every panel model); all readout scripts
 must tokenize the stored `text` with truncation at MAX_LEN=640 and assert identical ids across models.
@@ -18,10 +19,10 @@ sys.path.insert(0, "/localscratch/zjin350/Documents/jlen/opd/scripts")
 sys.path.insert(0, "/localscratch/zjin350/Documents/jlen/repro/scripts")
 import common  # noqa: F401  (adds jacobian-lens to sys.path)
 from opd_common import math_prompts, SYSTEM_MATH
-from jlens.examples import load_wikitext_prompts
 import transformers
 
 sys.path.insert(0, "/localscratch/zjin350/Documents/jlen/src")
+from latent_vocabulary_tracing.probes import select_spaced_text_records
 from latent_vocabulary_tracing.spans import infer_role_spans, validate_role_spans
 
 OUT = os.environ.get("PROBES_OUT", "/localscratch/zjin350/Documents/jlen/zoo/data/probes.jsonl")
@@ -98,8 +99,15 @@ for r in ds.skip(AG_SKIP).take(400):
 # index, but ask the model to continue from a fixed 48-token prefix.
 NEUTRAL_SYSTEM = "Continue the supplied passage in neutral expository prose."
 NEUTRAL_CONTEXT_TOKENS = 48
-for i, p in enumerate(load_wikitext_prompts(n_prompts=WOFF + N)[WOFF:WOFF + N]):
-    source_ids = tok.encode(p, add_special_tokens=False)
+NEUTRAL_SOURCE_STRIDE = 97
+neutral_sources = select_spaced_text_records(
+    load_dataset("Salesforce/wikitext", "wikitext-103-raw-v1", split="train"),
+    count=N,
+    start=WOFF,
+    stride=NEUTRAL_SOURCE_STRIDE,
+)
+for source in neutral_sources:
+    source_ids = tok.encode(source["text"], add_special_tokens=False)
     context = tok.decode(source_ids[:NEUTRAL_CONTEXT_TOKENS])
     continuation = tok.decode(source_ids[NEUTRAL_CONTEXT_TOKENS:])
     prefix = chat(
@@ -117,9 +125,15 @@ for i, p in enumerate(load_wikitext_prompts(n_prompts=WOFF + N)[WOFF:WOFF + N]):
             "text": prefix + continuation,
             "prompt_len": ntok(prefix),
             "meta": {
-                "idx": WOFF + i,
+                "idx": source["qualifying_index"],
+                "article": source["article"],
                 "control": "chat_matched_continuation",
                 "source_context_tokens": NEUTRAL_CONTEXT_TOKENS,
+                "source_dataset": "Salesforce/wikitext:wikitext-103-raw-v1",
+                "source_split": "train",
+                "source_sampling": "spaced_qualifying_records",
+                "source_start": WOFF,
+                "source_stride": NEUTRAL_SOURCE_STRIDE,
             },
         }
     )

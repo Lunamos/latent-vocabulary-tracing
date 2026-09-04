@@ -48,6 +48,12 @@ def valid_summary() -> dict:
         "probe_protocol": {
             "neutral_control": "chat_matched_continuation",
             "neutral_source_context_tokens": 48,
+            "neutral_source_dataset": "Salesforce/wikitext:wikitext-103-raw-v1",
+            "neutral_source_split": "train",
+            "neutral_source_sampling": "spaced_qualifying_records",
+            "neutral_source_start": 1500,
+            "neutral_source_stride": 97,
+            "neutral_source_document_count": 30,
         },
         "category_statistics": {
             "enabled": True,
@@ -132,6 +138,13 @@ def test_contract_rejects_raw_text_as_the_primary_neutral_control():
     summary = valid_summary()
     summary["probe_protocol"]["neutral_control"] = "raw_wikitext"
     with pytest.raises(ValueError, match="chat-matched"):
+        validate_summary_contract(summary, SummaryContract(readout="LL"))
+
+
+def test_contract_rejects_pseudoreplicated_neutral_documents():
+    summary = valid_summary()
+    summary["probe_protocol"]["neutral_source_document_count"] = 1
+    with pytest.raises(ValueError, match="document_count"):
         validate_summary_contract(summary, SummaryContract(readout="LL"))
 
 

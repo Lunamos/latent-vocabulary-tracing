@@ -47,6 +47,7 @@ from latent_vocabulary_tracing.metrics import (  # noqa: E402
     deterministic_balanced_split,
     one_sided_sign_test,
 )
+from latent_vocabulary_tracing.probes import describe_neutral_protocol  # noqa: E402
 from latent_vocabulary_tracing.provenance import model_config_hash  # noqa: E402
 from latent_vocabulary_tracing.registry import load_edge_registry  # noqa: E402
 from latent_vocabulary_tracing.taxonomy import (  # noqa: E402
@@ -253,26 +254,7 @@ def text_config(model):
 # Compare id -> tokenizer piece for every id that actually occurs; comparing
 # only shared piece -> id mappings misses parent-only ids reused by B.
 all_probes = [json.loads(line) for line in open(args.probes)]
-neutral_controls = {
-    probe.get("meta", {}).get("control", "raw_text")
-    for probe in all_probes
-    if probe.get("kind") == "neutral"
-}
-neutral_context_lengths = {
-    probe.get("meta", {}).get("source_context_tokens")
-    for probe in all_probes
-    if probe.get("kind") == "neutral"
-}
-probe_protocol = {
-    "neutral_control": (
-        next(iter(neutral_controls)) if len(neutral_controls) == 1 else "mixed_or_absent"
-    ),
-    "neutral_source_context_tokens": (
-        next(iter(neutral_context_lengths))
-        if len(neutral_context_lengths) == 1
-        else None
-    ),
-}
+probe_protocol = describe_neutral_protocol(all_probes)
 probe_ids = set()
 for probe in all_probes:
     probe_ids.update(tok(probe["text"], truncation=True, max_length=args.max_len).input_ids)

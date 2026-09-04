@@ -143,6 +143,18 @@ def validate_summary_contract(
             errors.append("neutral controls are not chat-matched continuations")
         if probe_protocol.get("neutral_source_context_tokens") != 48:
             errors.append("neutral continuation context is not the frozen 48 tokens")
+        for field, expected in (
+            ("neutral_source_dataset", "Salesforce/wikitext:wikitext-103-raw-v1"),
+            ("neutral_source_split", "train"),
+            ("neutral_source_sampling", "spaced_qualifying_records"),
+            ("neutral_source_start", 1500),
+            ("neutral_source_stride", 97),
+            ("neutral_source_document_count", 30),
+        ):
+            if probe_protocol.get(field) != expected:
+                errors.append(
+                    f"{field}={probe_protocol.get(field)!r}, need {expected!r}"
+                )
 
     if contract.require_edge_registry or contract.edge_registry_hash is not None:
         binding = summary.get("edge_registry", {})

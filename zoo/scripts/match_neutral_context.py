@@ -14,6 +14,7 @@ from transformers import AutoTokenizer
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
+from latent_vocabulary_tracing.probes import select_spaced_text_records  # noqa: E402
 from latent_vocabulary_tracing.spans import (  # noqa: E402
     infer_role_spans,
     validate_role_spans,
@@ -30,6 +31,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--style", choices=("qwen", "olmo"), required=True)
     parser.add_argument("--context-tokens", type=int, default=48)
     parser.add_argument("--max-length", type=int, default=640)
+    parser.add_argument(
+        "--resample-wikitext",
+        action="store_true",
+        help="replace neutral rows with the frozen 30-document WikiText sample",
+    )
+    parser.add_argument("--source-start", type=int, default=1500)
+    parser.add_argument("--source-stride", type=int, default=97)
     return parser.parse_args()
 
 
@@ -72,15 +80,32 @@ def main() -> None:
         json.loads(line)
         for line in args.probes.read_text(encoding="utf-8").splitlines()
     ]
+    neutral_count = sum(row.get("kind") == "neutral" for row in rows)
+    sources = None
+    if args.resample_wikitext:
+        from datasets import load_dataset
+
+        sources = select_spaced_text_records(
+            load_dataset(
+                "Salesforce/wikitext",
+                "wikitext-103-raw-v1",
+                split="train",
+            ),
+            count=neutral_count,
+            start=args.source_start,
+            stride=args.source_stride,
+        )
     converted = 0
     for row in rows:
         if row.get("kind") != "neutral":
             continue
-        if row.get("meta", {}).get("control") == "chat_matched_continuation":
+        source = sources[converted] if sources is not None else None
+        if source is None and row.get("meta", {}).get("control") == "chat_matched_continuation":
             raise ValueError(f"{row.get('key')}: neutral row is already chat matched")
-        if row.get("prompt_len") != 0:
+        if source is None and row.get("prompt_len") != 0:
             raise ValueError(f"{row.get('key')}: expected a legacy raw neutral row")
-        source_ids = tokenizer.encode(row["text"], add_special_tokens=False)
+        source_text = source["text"] if source is not None else row["text"]
+        source_ids = tokenizer.encode(source_text, add_special_tokens=False)
         if len(source_ids) <= args.context_tokens:
             raise ValueError(f"{row.get('key')}: source is too short for a continuation")
         context = tokenizer.decode(source_ids[: args.context_tokens])
@@ -90,8 +115,21 @@ def main() -> None:
         row["prompt_len"] = len(tokenizer.encode(prefix, add_special_tokens=False))
         row["meta"] = {
             **row.get("meta", {}),
+            "idx": (
+                source["qualifying_index"]
+                if source is not None
+                else row.get("meta", {}).get("idx")
+            ),
+            "article": source["article"] if source is not None else None,
             "control": "chat_matched_continuation",
             "source_context_tokens": args.context_tokens,
+            "source_dataset": "Salesforce/wikitext:wikitext-103-raw-v1",
+            "source_split": "train",
+            "source_sampling": (
+                "spaced_qualifying_records" if source is not None else "legacy_existing_rows"
+            ),
+            "source_start": args.source_start if source is not None else None,
+            "source_stride": args.source_stride if source is not None else None,
         }
         encoded = tokenizer(
             row["text"],
