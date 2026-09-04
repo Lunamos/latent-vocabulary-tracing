@@ -460,7 +460,7 @@ def heldout_token_payload(domain, readout, layer):
         "discovery_probes": n_discovery,
         "confirmation_probes": n_confirmation,
         "test": "one_sided_exact_sign_test",
-        "multiplicity": "benjamini_hochberg_across_displayed_candidates",
+        "multiplicity": "benjamini_hochberg_across_discovery_candidates",
         "q_threshold": 0.05,
         "displayable_by_category": {},
     }
