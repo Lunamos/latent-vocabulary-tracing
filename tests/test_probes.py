@@ -85,6 +85,18 @@ def test_probe_record_requires_exact_aliases_and_agent_partition():
     with pytest.raises(ValueError, match="neutral_text"):
         validate_probe_record(neutral, n_tokens=5)
 
+    truncated = {
+        "key": "truncated",
+        "kind": "math",
+        "prompt_len": 9,
+        "n_tok": 5,
+        "role_spans": {
+            "input_context": [[0, 5]],
+            "math_problem": [[0, 5]],
+        },
+    }
+    validate_probe_record(truncated, n_tokens=5)
+
     agent = {
         "key": "a",
         "kind": "agent",

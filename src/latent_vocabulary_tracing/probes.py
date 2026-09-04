@@ -111,15 +111,16 @@ def validate_probe_record(probe: Mapping[str, Any], *, n_tokens: int) -> None:
             f"{key}: stored n_tok={probe.get('n_tok')!r}, tokenizer produced {n_tokens}"
         )
     prompt_len = probe.get("prompt_len")
-    if not isinstance(prompt_len, int) or not 0 <= prompt_len <= n_tokens:
-        raise ValueError(f"{key}: prompt_len must lie in [0, {n_tokens}]")
+    if not isinstance(prompt_len, int) or prompt_len < 0:
+        raise ValueError(f"{key}: prompt_len must be a nonnegative integer")
+    prompt_end = min(prompt_len, n_tokens)
     spans = probe.get("role_spans")
     if not isinstance(spans, dict):
         raise ValueError(f"{key}: role_spans must be an object")
     validate_role_spans(spans, n_tokens=n_tokens)
 
-    expected_context = [[0, prompt_len]] if prompt_len else None
-    expected_response = [[prompt_len, n_tokens]] if prompt_len < n_tokens else None
+    expected_context = [[0, prompt_end]] if prompt_end else None
+    expected_response = [[prompt_end, n_tokens]] if prompt_end < n_tokens else None
     for role, expected in (
         ("input_context", expected_context),
         ("model_response", expected_response),
@@ -151,7 +152,7 @@ def validate_probe_record(probe: Mapping[str, Any], *, n_tokens: int) -> None:
     if not typed_spans:
         raise ValueError(f"{key}: agent response has no typed role spans")
     typed_spans.sort()
-    if typed_spans[0][0] != prompt_len or typed_spans[-1][1] != n_tokens:
+    if typed_spans[0][0] != prompt_end or typed_spans[-1][1] != n_tokens:
         raise ValueError(f"{key}: typed agent roles do not cover the response")
     if any(
         left[1] != right[0]
@@ -160,5 +161,5 @@ def validate_probe_record(probe: Mapping[str, Any], *, n_tokens: int) -> None:
         raise ValueError(f"{key}: typed agent response roles overlap or leave a gap")
 
     for observation in spans.get("tool_observation", []):
-        if observation[1] > prompt_len:
+        if observation[1] > prompt_end:
             raise ValueError(f"{key}: tool_observation extends into the response")

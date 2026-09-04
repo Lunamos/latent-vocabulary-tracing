@@ -47,11 +47,21 @@ def ntok(s):
 
 
 probes = []
-# math (verbatim protocol)
-for r in math_prompts(split="test", n=N, seed=SEED):
+# Math. Draw extra deterministic candidates so an unusually long problem
+# cannot consume the entire truncation window and leave no scored response.
+math_count = 0
+for r in math_prompts(split="test", n=N + 50, seed=SEED):
     prefix = chat([{"role": "system", "content": SYSTEM_MATH}, {"role": "user", "content": r["problem"]}])
-    probes.append({"kind": "math", "text": prefix + r["solution"], "prompt_len": ntok(prefix),
+    prompt_len = ntok(prefix)
+    if prompt_len >= MAX_LEN:
+        continue
+    probes.append({"kind": "math", "text": prefix + r["solution"], "prompt_len": prompt_len,
                    "meta": {"level": r["level"], "type": r["type"]}})
+    math_count += 1
+    if math_count == N:
+        break
+if math_count != N:
+    raise RuntimeError("not enough mathematics probes with a response inside MAX_LEN")
 
 # code
 from datasets import load_dataset
