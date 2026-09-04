@@ -287,6 +287,8 @@ def matched_readout_diagnostics(
     final_distributions: Mapping[str, tuple[torch.Tensor, torch.Tensor]] | None = None,
     readout_distributions: Mapping[str, tuple[torch.Tensor, torch.Tensor]] | None = None,
     faithfulness: Mapping[str, Mapping[str, torch.Tensor]] | None = None,
+    final_top_ids: Mapping[str, torch.Tensor] | None = None,
+    readout_top_ids: Mapping[str, torch.Tensor] | None = None,
 ) -> dict[str, dict[str, dict[str, torch.Tensor]]]:
     """Measure readout quality within each output-decoder coordinate.
 
@@ -326,21 +328,36 @@ def matched_readout_diagnostics(
         "parent_anchored": {"a": (CELL_AA, CELL_AA), "b": (CELL_BA, CELL_BA)},
     }
     k = min(topk, vocab_size)
+    if final_top_ids is None:
+        final_top_ids = {cell: final_logits[cell].topk(k, dim=-1).indices for cell in needed}
+    if readout_top_ids is None:
+        readout_top_ids = {cell: readout_logits[cell].topk(k, dim=-1).indices for cell in needed}
+    for name, top_ids in (("final", final_top_ids), ("readout", readout_top_ids)):
+        missing = needed.difference(top_ids)
+        if missing:
+            raise ValueError(f"missing {name} top-token IDs: {sorted(missing)}")
+        if any(
+            values.shape != final_logits[CELL_AA].shape[:-1] + (k,) for values in top_ids.values()
+        ):
+            raise ValueError(f"{name} top-token IDs have an invalid shape")
+    malformed_mass = {
+        cell: readout_distributions[cell][1][..., malformed_token_mask].sum(dim=-1)
+        for cell in needed
+    }
     output: dict[str, dict[str, dict[str, torch.Tensor]]] = {}
     for coordinate, models in pairings.items():
         output[coordinate] = {}
         for model_key, (final_cell, readout_cell) in models.items():
-            final_ids = final_logits[final_cell].topk(k, dim=-1).indices
-            readout_ids = readout_logits[readout_cell].topk(k, dim=-1).indices
+            final_ids = final_top_ids[final_cell]
+            readout_ids = readout_top_ids[readout_cell]
             intersection = (
                 (final_ids.unsqueeze(-1) == readout_ids.unsqueeze(-2)).any(dim=-1).sum(dim=-1)
             )
             union = 2 * k - intersection
-            probability_readout = readout_distributions[readout_cell][1]
             output[coordinate][model_key] = {
                 "faith_kl": faithfulness[coordinate][model_key],
                 "topk_jaccard": intersection.float() / union.float(),
-                "malformed_token_mass": probability_readout[..., malformed_token_mask].sum(dim=-1),
+                "malformed_token_mass": malformed_mass[readout_cell],
             }
     return output
 

@@ -113,6 +113,16 @@ def test_readout_diagnostics_use_matched_coordinates_and_objective_junk_mask():
         "malformed_token_mass"
     ].item() == pytest.approx(expected_mass)
 
+    cached = matched_readout_diagnostics(
+        final,
+        readout,
+        malformed,
+        topk=1,
+        final_top_ids={name: values.topk(1, dim=-1).indices for name, values in final.items()},
+        readout_top_ids={name: values.topk(1, dim=-1).indices for name, values in readout.items()},
+    )
+    assert cached["native_output_decoder"]["b"]["topk_jaccard"].item() == 0.0
+
 
 def test_torch_category_statistics_expose_cancelled_turnover():
     parent = torch.log(torch.tensor([[0.4, 0.2, 0.3, 0.1]]))

@@ -61,6 +61,7 @@ from latent_vocabulary_tracing.taxonomy import (  # noqa: E402
 from latent_vocabulary_tracing.torch_readout import (  # noqa: E402
     CELL_AA,
     CELL_AB,
+    CELL_BA,
     CELL_BB,
     FOUR_CELL_CONTRASTS,
     aggregate_category_statistics,
@@ -617,6 +618,10 @@ with torch.no_grad():
         # matched native or parent-anchored faithfulness.  Release it before
         # iterating over layers; this matters for 248k-vocabulary models.
         del final_cells[CELL_AB], final_distributions[CELL_AB]
+        final_top_ids = {
+            cell: final_cells[cell].topk(args.topk, dim=-1).indices
+            for cell in (CELL_AA, CELL_BA, CELL_BB)
+        }
         n_pos = ids.shape[1]
         rec = {
             "key": p["key"],
@@ -678,6 +683,14 @@ with torch.no_grad():
                     parent_distribution=distributions[primary_a],
                     descendant_distribution=distributions[primary_b],
                 )
+                readout_top_ids = {
+                    primary_a: m["top_a"][:, : args.topk],
+                    primary_b: m["top_b"][:, : args.topk],
+                }
+                missing_diagnostic_cell = CELL_BB if args.decoder == "parent" else CELL_BA
+                readout_top_ids[missing_diagnostic_cell] = (
+                    cells[missing_diagnostic_cell].topk(args.topk, dim=-1).indices
+                )
                 rec["per_layer"][kind][str(layer)] = summarize_position_metrics(
                     m, span, n_pos, p["prompt_len"]
                 )
@@ -736,6 +749,8 @@ with torch.no_grad():
                         final_distributions=final_distributions,
                         readout_distributions=distributions,
                         faithfulness=faith_values,
+                        final_top_ids=final_top_ids,
+                        readout_top_ids=readout_top_ids,
                     ),
                     span,
                     n_pos,
@@ -828,7 +843,7 @@ with torch.no_grad():
                             if k not in ("a_at_b", "b_at_a")
                         }
                     st[kind][layer] = to_cpu_store({k: v[span] for k, v in m.items()})
-                del cells, distributions, four_cell, m
+                del cells, distributions, four_cell, m, readout_top_ids
         # final logits
         m = pair_metrics(
             fa,
@@ -870,6 +885,7 @@ with torch.no_grad():
             final_cells,
             final_distributions,
             final_four_cell_metrics,
+            final_top_ids,
             last_a,
             last_b,
             m,
