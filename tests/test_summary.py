@@ -39,6 +39,9 @@ def valid_summary() -> dict:
             "dtype": "fp32",
             "support": "full_vocabulary",
             "role_conditioned": True,
+            "nonlinear_aggregation": (
+                "derive_after_averaging_primitive_masses_within_probe"
+            ),
             "top_change_support": "full_vocabulary",
             "top_change_ranking": "net_probability_delta_after_averaging",
             "turnover_enrichment": (

@@ -137,6 +137,11 @@ def validate_summary_contract(
             )
         if not category.get("role_conditioned"):
             errors.append("category statistics are not role-conditioned")
+        if (
+            category.get("nonlinear_aggregation")
+            != "derive_after_averaging_primitive_masses_within_probe"
+        ):
+            errors.append("category ratios were not derived from probe-level primitive masses")
         if category.get("top_change_support") != "full_vocabulary":
             errors.append("exact token changes do not use full-vocabulary support")
         if category.get("top_change_ranking") != "net_probability_delta_after_averaging":

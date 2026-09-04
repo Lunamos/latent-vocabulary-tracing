@@ -7,6 +7,7 @@ from latent_vocabulary_tracing.torch_readout import (  # noqa: E402
     CELL_AB,
     CELL_BA,
     CELL_BB,
+    aggregate_category_statistics,
     aggregate_category_statistics_by_spans,
     aggregate_position_metrics_by_spans,
     category_statistics,
@@ -108,16 +109,48 @@ def test_torch_category_statistics_expose_cancelled_turnover():
     )
 
 
+def test_category_aggregation_derives_ratios_after_averaging_primitive_masses():
+    parent = torch.log(
+        torch.tensor([[0.3, 0.2, 0.3, 0.2], [0.3, 0.2, 0.3, 0.2]])
+    )
+    descendant = torch.log(
+        torch.tensor([[0.2, 0.3, 0.3, 0.2], [0.3, 0.2, 0.0, 0.5]]).clamp_min(1e-12)
+    )
+    statistics = category_statistics(
+        parent,
+        descendant,
+        torch.tensor([0, 0, 1, 1]),
+        n_categories=2,
+    )
+    aggregate = aggregate_category_statistics(statistics)
+    assert statistics["composition"].mean(dim=0).tolist() == pytest.approx([0.5, 0.5])
+    assert aggregate["composition"].tolist() == pytest.approx([0.25, 0.75])
+
+
 def test_role_aggregation_weights_positions_then_returns_probe_vectors():
-    statistics = {
-        "turnover": torch.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]])
-    }
+    parent = torch.log(torch.full((4, 4), 0.25))
+    descendant = torch.log(
+        torch.tensor(
+            [
+                [0.20, 0.30, 0.25, 0.25],
+                [0.15, 0.35, 0.25, 0.25],
+                [0.25, 0.25, 0.10, 0.40],
+                [0.25, 0.25, 0.05, 0.45],
+            ]
+        )
+    )
+    statistics = category_statistics(
+        parent,
+        descendant,
+        torch.tensor([0, 0, 1, 1]),
+        n_categories=2,
+    )
     roles = aggregate_category_statistics_by_spans(
         statistics,
         {"observation": [[0, 2]], "action": [[2, 3], [3, 9]]},
     )
-    assert roles["observation"]["turnover"].tolist() == pytest.approx([2.0, 3.0])
-    assert roles["action"]["turnover"].tolist() == pytest.approx([6.0, 7.0])
+    assert roles["observation"]["turnover"].tolist() == pytest.approx([0.075, 0.0])
+    assert roles["action"]["turnover"].tolist() == pytest.approx([0.0, 0.175])
 
 
 def test_position_metric_role_aggregation_handles_disjoint_spans():

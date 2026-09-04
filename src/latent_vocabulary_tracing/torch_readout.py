@@ -397,6 +397,71 @@ def vocabulary_edit_statistics(
     return categories, descendant - parent
 
 
+def aggregate_category_statistics(
+    statistics: Mapping[str, torch.Tensor],
+    position_indices: slice | torch.Tensor | None = None,
+    *,
+    epsilon: float = 1e-12,
+) -> dict[str, torch.Tensor]:
+    """Average primitive masses over positions, then derive category ratios.
+
+    Composition, balance, and enrichment are nonlinear.  Computing them after
+    the primitive parent/descendant/promoted/suppressed masses have been
+    averaged prevents tiny-edit positions from receiving the same influence as
+    positions that carry substantial probability movement.
+    """
+
+    primitive_names = ("parent_mass", "descendant_mass", "promoted", "suppressed")
+    missing = set(primitive_names).difference(statistics)
+    if missing:
+        raise ValueError(f"missing primitive category statistics: {sorted(missing)}")
+    if epsilon <= 0:
+        raise ValueError("epsilon must be positive")
+    shapes = {tuple(statistics[name].shape) for name in primitive_names}
+    if len(shapes) != 1:
+        raise ValueError(f"category primitive shape mismatch: {sorted(shapes)}")
+    shape = next(iter(shapes))
+    if len(shape) != 2:
+        raise ValueError("category statistics must have [position, category] shape")
+
+    selected = {
+        name: values if position_indices is None else values[position_indices]
+        for name, values in statistics.items()
+        if name in primitive_names
+    }
+    if not selected["parent_mass"].shape[0]:
+        raise ValueError("cannot aggregate an empty set of positions")
+    parent_mass = selected["parent_mass"].mean(dim=0)
+    descendant_mass = selected["descendant_mass"].mean(dim=0)
+    promoted = selected["promoted"].mean(dim=0)
+    suppressed = selected["suppressed"].mean(dim=0)
+    signed = promoted - suppressed
+    absolute = promoted + suppressed
+    turnover = 0.5 * absolute
+    total_turnover = turnover.sum()
+    composition = torch.where(total_turnover > 0, turnover / total_turnover, 0.0)
+    balance = torch.where(absolute > 0, signed / absolute, 0.0)
+    reference_mass = 0.5 * (parent_mass + descendant_mass)
+    turnover_enrichment_bits = torch.where(
+        total_turnover > 0,
+        torch.log2((composition + epsilon) / (reference_mass + epsilon)),
+        0.0,
+    )
+    log_mass_ratio = torch.log(descendant_mass + epsilon) - torch.log(parent_mass + epsilon)
+    return {
+        "parent_mass": parent_mass,
+        "descendant_mass": descendant_mass,
+        "promoted": promoted,
+        "suppressed": suppressed,
+        "signed": signed,
+        "turnover": turnover,
+        "composition": composition,
+        "balance": balance,
+        "turnover_enrichment_bits": turnover_enrichment_bits,
+        "log_mass_ratio": log_mass_ratio,
+    }
+
+
 def aggregate_category_statistics_by_spans(
     statistics: Mapping[str, torch.Tensor],
     role_spans: Mapping[str, Sequence[Sequence[int]]],
@@ -411,13 +476,10 @@ def aggregate_category_statistics_by_spans(
 
     if not statistics:
         raise ValueError("statistics cannot be empty")
-    shapes = {tuple(value.shape) for value in statistics.values()}
-    if len(shapes) != 1:
-        raise ValueError(f"category statistic shape mismatch: {sorted(shapes)}")
-    shape = next(iter(shapes))
-    if len(shape) != 2:
+    first = next(iter(statistics.values()))
+    if first.ndim != 2:
         raise ValueError("category statistics must have [position, category] shape")
-    n_positions = shape[0]
+    n_positions = first.shape[0]
     output: dict[str, dict[str, torch.Tensor]] = {}
     for role, spans in role_spans.items():
         valid_spans: list[tuple[int, int]] = []
@@ -431,12 +493,13 @@ def aggregate_category_statistics_by_spans(
                 valid_spans.append((start, min(end, n_positions)))
         if not valid_spans:
             continue
-        output[role] = {
-            metric: torch.cat([values[start:end] for start, end in valid_spans], dim=0).mean(
-                dim=0
-            )
-            for metric, values in statistics.items()
-        }
+        indices = torch.cat(
+            [
+                torch.arange(start, end, device=first.device)
+                for start, end in valid_spans
+            ]
+        )
+        output[role] = aggregate_category_statistics(statistics, indices)
     return output
 
 

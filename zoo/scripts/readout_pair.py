@@ -53,6 +53,7 @@ from latent_vocabulary_tracing.torch_readout import (  # noqa: E402
     CELL_AB,
     CELL_BB,
     FOUR_CELL_CONTRASTS,
+    aggregate_category_statistics,
     aggregate_category_statistics_by_spans,
     aggregate_position_metrics_by_spans,
     cell_distributions,
@@ -668,8 +669,10 @@ with torch.no_grad():
                     )
                     if n_pos > p["prompt_len"]:
                         rec["categories"][kind][str(layer)] = {
-                            metric: values[span].mean(dim=0).cpu().tolist()
-                            for metric, values in category_values.items()
+                            metric: values.cpu().tolist()
+                            for metric, values in aggregate_category_statistics(
+                                category_values, span
+                            ).items()
                         }
                         delta_response = probability_delta[span]
                         change_key = (p["kind"], kind, layer)
@@ -1103,6 +1106,11 @@ summary = {
         "support": "full_vocabulary" if args.category_stats else None,
         "role_conditioned": args.category_stats,
         "averaging": "positions_within_probe_then_probes",
+        "nonlinear_aggregation": (
+            "derive_after_averaging_primitive_masses_within_probe"
+            if args.category_stats
+            else None
+        ),
         "top_changes": args.top_changes if args.category_stats else None,
         "top_change_support": "full_vocabulary" if args.category_stats else None,
         "top_change_ranking": (
