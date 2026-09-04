@@ -67,6 +67,14 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--poll-seconds", type=int, default=60)
     parser.add_argument("--retry-failed", action="store_true")
+    parser.add_argument(
+        "--delete-after",
+        action="store_true",
+        help=(
+            "delete non-kept descendant snapshots after each job; disabled by default "
+            "because the Hugging Face cache may predate this run"
+        ),
+    )
     parser.add_argument("--contract-readout", choices=("J", "LL"))
     parser.add_argument("--require-categories", action="store_true")
     parser.add_argument("--require-fp32-store", action="store_true")
@@ -303,6 +311,9 @@ def delete_download(model: FetchedModel, keep: set[str]) -> None:
     target = model.source_path
     if not target.exists():
         return
+    snapshot_root = (HF_HUB / f"models--{repository.replace('/', '--')}" / "snapshots").resolve()
+    if snapshot_root not in target.resolve().parents:
+        raise ValueError(f"refusing to delete path outside repository snapshots: {target}")
     size_gib = (
         sum(
             path.stat().st_size
@@ -406,7 +417,8 @@ def run_job(job, args: argparse.Namespace, keep: set[str]) -> None:
         marker = done if valid else failed
         write_marker(marker, return_code=completed.returncode, detail=detail)
         log(f"{'DONE' if valid else 'FAIL'} {job.tag} rc={completed.returncode}")
-        delete_download(descendant, keep)
+        if args.delete_after:
+            delete_download(descendant, keep)
 
 
 def main() -> None:

@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from zoo.scripts import stream_pairs
 from zoo.scripts.stream_pairs import parse_model_spec
 
@@ -59,3 +61,24 @@ def test_subdirectory_view_does_not_copy_config_into_snapshot(tmp_path, monkeypa
     assert not (checkpoint / "config.json").exists()
     assert json.loads((view / "config.json").read_text())["hidden_size"] == 8
     assert (view / "weights.safetensors").is_symlink()
+
+
+def test_cache_cleanup_refuses_paths_outside_expected_repository(tmp_path, monkeypatch):
+    outside = tmp_path / "unrelated-model"
+    outside.mkdir()
+    spec = stream_pairs.ModelSpec(
+        original="org/model",
+        repository="org/model",
+        revision=None,
+        subdirectory=None,
+        identity="org/model",
+    )
+    model = stream_pairs.FetchedModel(
+        path=outside,
+        source_path=outside,
+        overlay_path=None,
+        spec=spec,
+    )
+    monkeypatch.setattr(stream_pairs, "HF_HUB", tmp_path / "hub")
+    with pytest.raises(ValueError, match="outside repository snapshots"):
+        stream_pairs.delete_download(model, keep=set())
