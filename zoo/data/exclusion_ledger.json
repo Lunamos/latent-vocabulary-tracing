@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "exclusions": [
+    {
+      "attempted_tag": "q17_it2dapo",
+      "attempted_parent": "Qwen/Qwen3-1.7B",
+      "descendant": "FRPO/qwen3-1.7b-a9_dapo-dapo-noKL-clip0.2-mb4-eta100-bs256x5-n2-r3",
+      "reason_code": "invalid_parent",
+      "reason": "The released checkpoint declares Qwen/Qwen3-1.7B-Base, not the instruction model, as its base model.",
+      "disposition": "Exclude the attempted edge; analyze the checkpoint only from Qwen/Qwen3-1.7B-Base."
+    },
+    {
+      "attempted_tag": "q4_nonthink_mathrl",
+      "attempted_parent": "Qwen/Qwen3-4B-Base",
+      "descendant": "caiyuchen/Qwen3-4B-Non-Thinking-Math-RL",
+      "reason_code": "invalid_parent",
+      "reason": "The release is derived from the Qwen3-4B instruction checkpoint rather than Qwen3-4B-Base.",
+      "disposition": "Exclude the attempted edge; use the instruction checkpoint as parent."
+    },
+    {
+      "attempted_tag": "q8_base2stepfun_rlvr",
+      "attempted_parent": "Qwen/Qwen3-8B-Base",
+      "descendant": "stepfun-ai/RLVR-8B-0926",
+      "reason_code": "rope_configuration_mismatch",
+      "reason": "The released configuration changes RoPE relative to the proposed parent, so blockwise residual coordinates are not a matched architecture.",
+      "disposition": "Exclude from the primary paired hidden-state analysis."
+    },
+    {
+      "attempted_tag": "q8_base2pacore",
+      "attempted_parent": "Qwen/Qwen3-8B-Base",
+      "descendant": "stepfun-ai/PaCoRe-8B",
+      "reason_code": "rope_configuration_mismatch",
+      "reason": "The checkpoint inherits the altered RoPE configuration of RLVR-8B-0926.",
+      "disposition": "Exclude from the primary paired hidden-state analysis."
+    }
+  ]
+}

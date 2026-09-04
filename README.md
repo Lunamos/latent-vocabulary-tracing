@@ -123,7 +123,9 @@ two tokenizers are compatible.
 The checked-in probe files are content addressed. Their upstream dataset
 repositories, exact 40-character revisions, configurations, splits, licenses,
 and deterministic main/robustness selections are recorded in
-`zoo/data/probe_sources.json`.
+`zoo/data/probe_sources.json`. Rejected model comparisons are retained in
+`zoo/data/exclusion_ledger.json` with the proposed parent, reason, and safe
+disposition, rather than disappearing from the analysis history.
 
 Model weights, fitted lenses, tensor stores, logs, generated analyses, external
 checkouts, manuscripts, and working documentation are excluded from version

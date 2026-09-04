@@ -54,3 +54,21 @@ def test_registry_rejects_checkpoint_identity_drift():
     registry = load_edge_registry(REGISTRY)
     with pytest.raises(ValueError, match="identity mismatch"):
         registry.require("q8_base2it_confirm", "Qwen/wrong", "Qwen/Qwen3-8B")
+
+
+def test_exclusion_ledger_is_disjoint_from_frozen_registry():
+    registry = load_edge_registry(REGISTRY)
+    ledger = json.loads((ROOT / "zoo" / "data" / "exclusion_ledger.json").read_text())
+    registered_tags = {edge.tag for edge in registry.edges}
+    attempted_tags = set()
+    for row in ledger["exclusions"]:
+        assert set(row) == {
+            "attempted_tag",
+            "attempted_parent",
+            "descendant",
+            "reason_code",
+            "reason",
+            "disposition",
+        }
+        attempted_tags.add(row["attempted_tag"])
+    assert attempted_tags.isdisjoint(registered_tags)
