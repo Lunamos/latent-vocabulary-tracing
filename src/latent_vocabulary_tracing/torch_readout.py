@@ -278,6 +278,73 @@ def matched_faithfulness(
     }
 
 
+def matched_readout_diagnostics(
+    final_logits: Mapping[str, torch.Tensor],
+    readout_logits: Mapping[str, torch.Tensor],
+    malformed_token_mask: torch.Tensor,
+    *,
+    topk: int = 10,
+    final_distributions: Mapping[str, tuple[torch.Tensor, torch.Tensor]] | None = None,
+    readout_distributions: Mapping[str, tuple[torch.Tensor, torch.Tensor]] | None = None,
+    faithfulness: Mapping[str, Mapping[str, torch.Tensor]] | None = None,
+) -> dict[str, dict[str, dict[str, torch.Tensor]]]:
+    """Measure readout quality within each output-decoder coordinate.
+
+    In addition to final-to-readout KL, report top-k Jaccard overlap and the
+    readout probability assigned to objectively malformed tokenizer pieces
+    (replacement characters or disallowed control characters). The same
+    coordinate pairings as :func:`matched_faithfulness` are used throughout.
+    """
+
+    if topk <= 0:
+        raise ValueError("topk must be positive")
+    needed = {CELL_AA, CELL_BA, CELL_BB}
+    for name, mapping in (("final", final_logits), ("readout", readout_logits)):
+        missing = needed.difference(mapping)
+        if missing:
+            raise ValueError(f"missing {name} logits: {sorted(missing)}")
+
+    vocab_size = final_logits[CELL_AA].shape[-1]
+    if malformed_token_mask.dtype != torch.bool:
+        raise TypeError("malformed_token_mask must be boolean")
+    if malformed_token_mask.ndim != 1 or malformed_token_mask.shape[0] != vocab_size:
+        raise ValueError("malformed_token_mask must have one entry per vocabulary item")
+    if final_distributions is None:
+        final_distributions = cell_distributions(final_logits)
+    if readout_distributions is None:
+        readout_distributions = cell_distributions(readout_logits)
+
+    if faithfulness is None:
+        faithfulness = matched_faithfulness(
+            final_logits,
+            readout_logits,
+            final_distributions=final_distributions,
+            readout_distributions=readout_distributions,
+        )
+    pairings = {
+        "native_output_decoder": {"a": (CELL_AA, CELL_AA), "b": (CELL_BB, CELL_BB)},
+        "parent_anchored": {"a": (CELL_AA, CELL_AA), "b": (CELL_BA, CELL_BA)},
+    }
+    k = min(topk, vocab_size)
+    output: dict[str, dict[str, dict[str, torch.Tensor]]] = {}
+    for coordinate, models in pairings.items():
+        output[coordinate] = {}
+        for model_key, (final_cell, readout_cell) in models.items():
+            final_ids = final_logits[final_cell].topk(k, dim=-1).indices
+            readout_ids = readout_logits[readout_cell].topk(k, dim=-1).indices
+            intersection = (
+                (final_ids.unsqueeze(-1) == readout_ids.unsqueeze(-2)).any(dim=-1).sum(dim=-1)
+            )
+            union = 2 * k - intersection
+            probability_readout = readout_distributions[readout_cell][1]
+            output[coordinate][model_key] = {
+                "faith_kl": faithfulness[coordinate][model_key],
+                "topk_jaccard": intersection.float() / union.float(),
+                "malformed_token_mass": probability_readout[..., malformed_token_mask].sum(dim=-1),
+            }
+    return output
+
+
 def _category_statistics_from_probabilities(
     parent: torch.Tensor,
     descendant: torch.Tensor,
@@ -497,10 +564,7 @@ def aggregate_category_statistics_by_spans(
         if not valid_spans:
             continue
         indices = torch.cat(
-            [
-                torch.arange(start, end, device=first.device)
-                for start, end in valid_spans
-            ]
+            [torch.arange(start, end, device=first.device) for start, end in valid_spans]
         )
         output[role] = aggregate_category_statistics(statistics, indices)
     return output

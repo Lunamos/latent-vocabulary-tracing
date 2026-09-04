@@ -70,6 +70,7 @@ from latent_vocabulary_tracing.torch_readout import (  # noqa: E402
     four_cell_logits,
     four_cell_scalar_metrics,
     matched_faithfulness,
+    matched_readout_diagnostics,
     net_token_direction_scores,
     pair_metrics,
     vocabulary_edit_statistics,
@@ -179,9 +180,7 @@ if args.no_J:
     print(f"no J-lens; layers {LAYERS[0]}..{LAYERS[-1]} ({len(LAYERS)})", flush=True)
 else:
     lens = torch.load(args.lens, map_location="cpu", weights_only=True)
-    requested_layers = (
-        {int(value) for value in args.layers.split(",")} if args.layers else None
-    )
+    requested_layers = {int(value) for value in args.layers.split(",")} if args.layers else None
     LAYERS = [
         layer
         for layer in lens["source_layers"]
@@ -191,9 +190,7 @@ else:
     if requested_layers is not None:
         missing_layers = requested_layers.difference(lens["source_layers"])
         if missing_layers:
-            raise ValueError(
-                f"requested layers absent from Jlens: {sorted(missing_layers)}"
-            )
+            raise ValueError(f"requested layers absent from Jlens: {sorted(missing_layers)}")
     if not LAYERS:
         raise ValueError("no Jlens layers remain after applying the layer/range selection")
     J = {layer: lens["J"][layer].to(dev, torch.float32) for layer in LAYERS}
@@ -319,9 +316,7 @@ def _parts(m):
 def architecture_signature(model):
     config = text_config(model)
     _, layers, norm, _ = _parts(model)
-    rope = getattr(config, "rope_scaling", None) or getattr(
-        config, "rope_parameters", None
-    )
+    rope = getattr(config, "rope_scaling", None) or getattr(config, "rope_parameters", None)
     return {
         "architecture": type(model).__name__,
         "hidden_size": int(config.hidden_size),
@@ -388,13 +383,18 @@ print(f"{len(probes)} probes, kinds={sorted(kinds)}", flush=True)
 category_ids = None
 category_ids_cpu = None
 displayable_ids = None
+token_pieces = [tok.decode([token_id]) for token_id in range(config_a.vocab_size)]
+malformed_token_mask = torch.tensor(
+    [taxonomy_module.categorize_token(piece) == "junk" for piece in token_pieces],
+    dtype=torch.bool,
+    device=dev,
+)
 if args.category_stats:
     print(
         f"classifying {config_a.vocab_size} tokenizer pieces into "
         f"{len(TRACE_CATEGORIES)} trace categories",
         flush=True,
     )
-    token_pieces = [tok.decode([token_id]) for token_id in range(config_a.vocab_size)]
     category_ids = torch.tensor(
         [TRACE_CATEGORIES.index(categorize_trace_token(piece)) for piece in token_pieces],
         dtype=torch.int64,
@@ -404,7 +404,7 @@ if args.category_stats:
         [is_displayable_trace_token(piece) for piece in token_pieces], dtype=torch.bool
     )
     category_ids_cpu = category_ids.cpu()
-    del token_pieces
+del token_pieces
 
 
 def top_token_rows(values, signed_values, mask=None):
@@ -523,9 +523,7 @@ def heldout_token_payload(domain, readout, layer):
                 }
                 payload["displayable_by_category"][category][label].append(row)
                 candidates.append(row)
-    q_values = benjamini_hochberg(
-        [candidate["one_sided_sign_p"] for candidate in candidates]
-    )
+    q_values = benjamini_hochberg([candidate["one_sided_sign_p"] for candidate in candidates])
     for candidate, q_value in zip(candidates, q_values, strict=True):
         candidate["bh_q"] = float(q_value)
         expected_sign = 1 if candidate["direction"] == "promoted" else -1
@@ -534,9 +532,7 @@ def heldout_token_payload(domain, readout, layer):
             and expected_sign * candidate["confirmation_probability_points"] > 0
         )
     payload["tested_candidates"] = len(candidates)
-    payload["confirmed_candidates"] = sum(
-        candidate["confirmed"] for candidate in candidates
-    )
+    payload["confirmed_candidates"] = sum(candidate["confirmed"] for candidate in candidates)
     return payload
 
 
@@ -569,6 +565,20 @@ def summarize_faithfulness(faith, span, n_pos, prompt_len):
             output[coordinate][f"{model_key}_resp"] = (
                 float(per_position[span].mean()) if n_pos > prompt_len else None
             )
+    return output
+
+
+def summarize_readout_diagnostics(diagnostics, span, n_pos, prompt_len):
+    output = {}
+    for coordinate, models in diagnostics.items():
+        output[coordinate] = {}
+        for model_key, metrics in models.items():
+            output[coordinate][model_key] = {}
+            for metric, per_position in metrics.items():
+                output[coordinate][model_key][metric] = float(per_position.mean())
+                output[coordinate][model_key][f"{metric}_resp"] = (
+                    float(per_position[span].mean()) if n_pos > prompt_len else None
+                )
     return output
 
 
@@ -621,6 +631,7 @@ with torch.no_grad():
             "faith": {"J": {}, "LL": {}},
             "faith_native_output_decoder": {"J": {}, "LL": {}},
             "faith_anchored": {"J": {}, "LL": {}},
+            "readout_diagnostics": {"J": {}, "LL": {}},
             "categories": {"J": {}, "LL": {}},
             "role_categories": {"J": {}, "LL": {}},
             "role_metrics": {"J": {}, "LL": {}},
@@ -695,13 +706,14 @@ with torch.no_grad():
                     for name, values in four_cell.items()
                 }
 
+                faith_values = matched_faithfulness(
+                    final_cells,
+                    cells,
+                    final_distributions=final_distributions,
+                    readout_distributions=distributions,
+                )
                 faith = summarize_faithfulness(
-                    matched_faithfulness(
-                        final_cells,
-                        cells,
-                        final_distributions=final_distributions,
-                        readout_distributions=distributions,
-                    ),
+                    faith_values,
                     span,
                     n_pos,
                     p["prompt_len"],
@@ -714,6 +726,20 @@ with torch.no_grad():
                     faith["parent_anchored"]
                     if args.decoder == "parent"
                     else faith["native_output_decoder"]
+                )
+                rec["readout_diagnostics"][kind][str(layer)] = summarize_readout_diagnostics(
+                    matched_readout_diagnostics(
+                        final_cells,
+                        cells,
+                        malformed_token_mask,
+                        topk=args.topk,
+                        final_distributions=final_distributions,
+                        readout_distributions=distributions,
+                        faithfulness=faith_values,
+                    ),
+                    span,
+                    n_pos,
+                    p["prompt_len"],
                 )
 
                 if category_ids is not None:
@@ -757,31 +783,29 @@ with torch.no_grad():
                         if split_key not in token_split_sums:
                             token_split_sums[split_key] = signed_probe_change.clone()
                             token_split_square_sums[split_key] = signed_probe_change.square()
-                            token_split_positive_counts[split_key] = (
-                                signed_probe_change > 0
-                            ).to(torch.int16)
-                            token_split_negative_counts[split_key] = (
-                                signed_probe_change < 0
-                            ).to(torch.int16)
+                            token_split_positive_counts[split_key] = (signed_probe_change > 0).to(
+                                torch.int16
+                            )
+                            token_split_negative_counts[split_key] = (signed_probe_change < 0).to(
+                                torch.int16
+                            )
                             token_split_counts[split_key] = 1
                         else:
                             token_split_sums[split_key] += signed_probe_change
                             token_split_square_sums[split_key] += signed_probe_change.square()
-                            token_split_positive_counts[split_key] += (
-                                signed_probe_change > 0
-                            ).to(torch.int16)
-                            token_split_negative_counts[split_key] += (
-                                signed_probe_change < 0
-                            ).to(torch.int16)
+                            token_split_positive_counts[split_key] += (signed_probe_change > 0).to(
+                                torch.int16
+                            )
+                            token_split_negative_counts[split_key] += (signed_probe_change < 0).to(
+                                torch.int16
+                            )
                             token_split_counts[split_key] += 1
                     rec["role_categories"][kind][str(layer)] = {}
                     role_values = aggregate_category_statistics_by_spans(
                         category_values, p.get("role_spans", {})
                     )
                     rec["role_categories"][kind][str(layer)] = {
-                        role: {
-                            metric: values.cpu().tolist() for metric, values in metrics.items()
-                        }
+                        role: {metric: values.cpu().tolist() for metric, values in metrics.items()}
                         for role, metrics in role_values.items()
                     }
                     del probability_delta, category_values
@@ -869,6 +893,7 @@ for kind in sorted(kinds):
         "faith": {"J": {}, "LL": {}},
         "faith_native_output_decoder": {"J": {}, "LL": {}},
         "faith_anchored": {"J": {}, "LL": {}},
+        "readout_diagnostics": {"J": {}, "LL": {}},
         "categories": {"J": {}, "LL": {}},
         "role_categories": {"J": {}, "LL": {}},
         "top_token_changes": {"J": {}, "LL": {}},
@@ -914,11 +939,7 @@ for kind in sorted(kinds):
                         a["four_cell"][ro][str(layer)][contrast][field] = sum(values) / len(values)
 
             role_names = sorted(
-                {
-                    role
-                    for r in rs
-                    for role in r["role_metrics"][ro].get(str(layer), {})
-                }
+                {role for r in rs for role in r["role_metrics"][ro].get(str(layer), {})}
             )
             a["role_metrics"][ro][str(layer)] = {}
             for role in role_names:
@@ -943,11 +964,32 @@ for kind in sorted(kinds):
                     if values:
                         a[faith_key][ro][str(layer)][field] = sum(values) / len(values)
             selected_faith = (
-                "faith_anchored"
-                if args.decoder == "parent"
-                else "faith_native_output_decoder"
+                "faith_anchored" if args.decoder == "parent" else "faith_native_output_decoder"
             )
             a["faith"][ro][str(layer)] = a[selected_faith][ro][str(layer)]
+
+            a["readout_diagnostics"][ro][str(layer)] = {}
+            reference_diagnostics = rs[0]["readout_diagnostics"][ro][str(layer)]
+            for coordinate, models in reference_diagnostics.items():
+                a["readout_diagnostics"][ro][str(layer)][coordinate] = {}
+                for model_key, metrics in models.items():
+                    aggregate_metrics = {}
+                    for metric in metrics:
+                        values = [
+                            row["readout_diagnostics"][ro][str(layer)][coordinate][model_key][
+                                metric
+                            ]
+                            for row in rs
+                            if row["readout_diagnostics"][ro][str(layer)][coordinate][model_key][
+                                metric
+                            ]
+                            is not None
+                        ]
+                        if values:
+                            aggregate_metrics[metric] = sum(values) / len(values)
+                    a["readout_diagnostics"][ro][str(layer)][coordinate][model_key] = (
+                        aggregate_metrics
+                    )
 
             if args.category_stats:
                 category_rows = [
@@ -962,11 +1004,7 @@ for kind in sorted(kinds):
                         for metric in category_rows[0]
                     }
                 role_names = sorted(
-                    {
-                        role
-                        for r in rs
-                        for role in r["role_categories"][ro].get(str(layer), {})
-                    }
+                    {role for r in rs for role in r["role_categories"][ro].get(str(layer), {})}
                 )
                 a["role_categories"][ro][str(layer)] = {}
                 for role in role_names:
@@ -984,9 +1022,7 @@ for kind in sorted(kinds):
                     }
                 change_key = (kind, ro, layer)
                 if change_key in token_change_sums:
-                    changes = (
-                        token_change_sums[change_key] / token_change_counts[change_key]
-                    )
+                    changes = token_change_sums[change_key] / token_change_counts[change_key]
                     a["top_token_changes"][ro][str(layer)] = token_change_payload(changes)
         a["hidden"][str(layer)] = {
             k: sum(r["hidden"][str(layer)][k] for r in rs) / len(rs)
@@ -994,13 +1030,10 @@ for kind in sorted(kinds):
         }
     if args.category_stats:
         n_model_layers = len(_parts(model_a)[1])
-        summary_layers = [
-            layer for layer in LAYERS if 0.50 <= (layer + 1) / n_model_layers <= 0.85
-        ]
+        summary_layers = [layer for layer in LAYERS if 0.50 <= (layer + 1) / n_model_layers <= 0.85]
         for ro in READOUTS:
             changes = [
-                token_change_sums[(kind, ro, layer)]
-                / token_change_counts[(kind, ro, layer)]
+                token_change_sums[(kind, ro, layer)] / token_change_counts[(kind, ro, layer)]
                 for layer in summary_layers
                 if (kind, ro, layer) in token_change_sums
             ]
@@ -1037,9 +1070,7 @@ for kind in sorted(kinds):
                     token_change_sums[(kind, ro, peak_layer)]
                     / token_change_counts[(kind, ro, peak_layer)]
                 )
-                peak_payload = token_change_payload(
-                    peak_changes, include_categories=True
-                )
+                peak_payload = token_change_payload(peak_changes, include_categories=True)
                 peak_payload.update(
                     {
                         "layer": peak_layer,
@@ -1049,9 +1080,7 @@ for kind in sorted(kinds):
                         "heldout_inference": heldout_token_payload(kind, ro, peak_layer),
                     }
                 )
-                a["top_token_changes"][ro][
-                    "peak_response_kl_50_85"
-                ] = peak_payload
+                a["top_token_changes"][ro]["peak_response_kl_50_85"] = peak_payload
     a["final"] = {
         k: sum(r["final"][k] for r in rs) / len(rs) for k in ("kl_ab", "kl_ba", "js", "jaccard")
     }
@@ -1140,6 +1169,13 @@ summary = {
             "final and layer logits both use output decoder A; Jlens transport is A"
         ),
     },
+    "readout_diagnostic_contract": {
+        "topk": args.topk,
+        "topk_overlap": "Jaccard overlap with the matched final distribution",
+        "malformed_token_mass": (
+            "readout probability on pieces containing U+FFFD or disallowed control characters"
+        ),
+    },
     "lens_n_prompts": int(lens["n_prompts"]),
     "lens_hash": sha256_file(args.lens) if not args.no_J else None,
     "lens_source_layers": list(lens.get("source_layers", [])),
@@ -1167,23 +1203,17 @@ summary = {
     "analysis_provenance": repository_state(),
     "support_k": args.support_k,
     "analysis_dtype": "fp32",
-    "stored_support_dtype": "none" if args.no_store else (
-        "fp32" if args.store_fp32 else "fp16"
-    ),
+    "stored_support_dtype": "none" if args.no_store else ("fp32" if args.store_fp32 else "fp16"),
     "category_statistics": {
         "enabled": args.category_stats,
         "taxonomy": list(TRACE_CATEGORIES) if args.category_stats else None,
-        "taxonomy_hash": (
-            sha256_file(taxonomy_module.__file__) if args.category_stats else None
-        ),
+        "taxonomy_hash": (sha256_file(taxonomy_module.__file__) if args.category_stats else None),
         "dtype": "fp32" if args.category_stats else None,
         "support": "full_vocabulary" if args.category_stats else None,
         "role_conditioned": args.category_stats,
         "averaging": "positions_within_probe_then_probes",
         "nonlinear_aggregation": (
-            "derive_after_averaging_primitive_masses_within_probe"
-            if args.category_stats
-            else None
+            "derive_after_averaging_primitive_masses_within_probe" if args.category_stats else None
         ),
         "top_changes": args.top_changes if args.category_stats else None,
         "top_change_support": "full_vocabulary" if args.category_stats else None,
@@ -1197,17 +1227,11 @@ summary = {
             else None
         ),
         "token_inference": (
-            "discovery_selection_then_heldout_sign_test_bh"
-            if args.category_stats
-            else None
+            "discovery_selection_then_heldout_sign_test_bh" if args.category_stats else None
         ),
-        "depth_summary": (
-            {"minimum": 0.50, "maximum": 0.85} if args.category_stats else None
-        ),
+        "depth_summary": ({"minimum": 0.50, "maximum": 0.85} if args.category_stats else None),
         "representative_layer_rule": (
-            "maximum_discovery_response_kl_ba_within_depth_summary"
-            if args.category_stats
-            else None
+            "maximum_discovery_response_kl_ba_within_depth_summary" if args.category_stats else None
         ),
     },
     "direction_statistics": {

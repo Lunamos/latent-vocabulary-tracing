@@ -15,6 +15,7 @@ from latent_vocabulary_tracing.torch_readout import (  # noqa: E402
     four_cell_logits,
     four_cell_scalar_metrics,
     matched_faithfulness,
+    matched_readout_diagnostics,
     net_token_direction_scores,
     pair_metrics,
     vocabulary_edit_statistics,
@@ -92,6 +93,27 @@ def test_faithfulness_never_mixes_native_and_anchored_descendant_logits():
     assert changed["parent_anchored"]["b"].item() == pytest.approx(0.0, abs=1e-7)
 
 
+def test_readout_diagnostics_use_matched_coordinates_and_objective_junk_mask():
+    final = {
+        CELL_AA: torch.tensor([[3.0, 2.0, 0.0]]),
+        CELL_BA: torch.tensor([[0.0, 3.0, 2.0]]),
+        CELL_BB: torch.tensor([[3.0, 0.0, 2.0]]),
+    }
+    readout = {name: value.clone() for name, value in final.items()}
+    readout[CELL_BB] = torch.tensor([[0.0, 2.0, 3.0]])
+    malformed = torch.tensor([False, True, False])
+
+    diagnostics = matched_readout_diagnostics(final, readout, malformed, topk=1)
+    assert diagnostics["parent_anchored"]["b"]["faith_kl"].item() == pytest.approx(0.0, abs=1e-7)
+    assert diagnostics["parent_anchored"]["b"]["topk_jaccard"].item() == 1.0
+    assert diagnostics["native_output_decoder"]["b"]["faith_kl"].item() > 0
+    assert diagnostics["native_output_decoder"]["b"]["topk_jaccard"].item() == 0.0
+    expected_mass = torch.softmax(readout[CELL_BB], dim=-1)[0, 1].item()
+    assert diagnostics["native_output_decoder"]["b"][
+        "malformed_token_mass"
+    ].item() == pytest.approx(expected_mass)
+
+
 def test_torch_category_statistics_expose_cancelled_turnover():
     parent = torch.log(torch.tensor([[0.4, 0.2, 0.3, 0.1]]))
     descendant = torch.log(torch.tensor([[0.25, 0.35, 0.1, 0.3]]))
@@ -110,9 +132,7 @@ def test_torch_category_statistics_expose_cancelled_turnover():
 
 
 def test_category_aggregation_derives_ratios_after_averaging_primitive_masses():
-    parent = torch.log(
-        torch.tensor([[0.3, 0.2, 0.3, 0.2], [0.3, 0.2, 0.3, 0.2]])
-    )
+    parent = torch.log(torch.tensor([[0.3, 0.2, 0.3, 0.2], [0.3, 0.2, 0.3, 0.2]]))
     descendant = torch.log(
         torch.tensor([[0.2, 0.3, 0.3, 0.2], [0.3, 0.2, 0.0, 0.5]]).clamp_min(1e-12)
     )
