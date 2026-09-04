@@ -44,11 +44,18 @@ lvt manifest check zoo/data/jobs_frpo.txt
 # Inspect a compact trace summary.
 lvt summary zoo/results/ro_example_summary.json
 
+# Refuse legacy/native results when building a confirmatory LL analysis.
+lvt summary zoo/results/ro_example_summary.json --contract-readout LL \
+  --require-categories --require-fp32-store
+
 # Apply the built-in vocabulary taxonomy to literal tokenizer pieces.
 lvt token classify ' therefore' '\boxed' '<|assistant|>'
 
 # Use the paper's coarser functional classes.
 lvt token classify --scheme functional ' therefore' '\boxed' ' equation'
+
+# Use the confirmatory cross-domain classes (math, code, and agent/tool traces).
+lvt token classify --scheme trace ' therefore' '\frac' ' stderr' 'def'
 ```
 
 ## Python API

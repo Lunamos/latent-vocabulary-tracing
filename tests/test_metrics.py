@@ -2,10 +2,14 @@ import numpy as np
 import pytest
 
 from latent_vocabulary_tracing.metrics import (
+    category_probability_statistics,
+    domain_write_contrasts,
     jensen_shannon_from_logits,
     kl_divergence_from_logits,
     log_probability_delta,
     moved_probability_mass,
+    normalized_depth,
+    select_normalized_depth_layers,
     topk_jaccard,
     vocabulary_write_amount,
     weighted_direction_alignment,
@@ -51,6 +55,66 @@ def test_moved_mass_balances_for_distributions():
     promoted, suppressed = moved_probability_mass(parent, descendant)
     assert promoted == pytest.approx(np.array([0.4]))
     assert suppressed == pytest.approx(np.array([0.4]))
+
+
+def test_category_statistics_separate_turnover_composition_and_balance():
+    parent = np.array([[0.40, 0.20, 0.30, 0.10]])
+    descendant = np.array([[0.25, 0.35, 0.10, 0.30]])
+    # The first category has equal promotion and suppression: signed change is
+    # zero even though it carries substantial probability turnover.
+    stats = category_probability_statistics(
+        parent,
+        descendant,
+        category_ids=np.array([0, 0, 1, 1]),
+    )
+    assert stats["signed"] == pytest.approx(np.array([[0.0, 0.0]]))
+    assert stats["turnover"] == pytest.approx(np.array([[0.15, 0.20]]))
+    assert stats["composition"] == pytest.approx(np.array([[3 / 7, 4 / 7]]))
+    assert stats["balance"] == pytest.approx(np.array([[0.0, 0.0]]))
+    assert stats["parent_mass"] == pytest.approx(np.array([[0.60, 0.40]]))
+    assert stats["descendant_mass"] == pytest.approx(np.array([[0.60, 0.40]]))
+
+
+def test_category_statistics_can_show_direction_within_category():
+    parent = np.array([0.7, 0.2, 0.1])
+    descendant = np.array([0.4, 0.2, 0.4])
+    stats = category_probability_statistics(parent, descendant, [0, 0, 1])
+    assert stats["balance"] == pytest.approx(np.array([-1.0, 1.0]))
+    assert stats["composition"].sum() == pytest.approx(1.0)
+
+
+def test_domain_write_contrasts_keep_raw_values_and_use_fixed_floor():
+    contrasts = domain_write_contrasts(
+        {"math": np.array([0.05]), "agent": np.array([0.01]), "neutral": np.array([0.0])},
+        noise_floor=0.01,
+    )
+    assert contrasts["math"]["raw"] == pytest.approx(np.array([0.05]))
+    assert contrasts["math"]["excess_over_neutral"] == pytest.approx(np.array([0.05]))
+    assert contrasts["math"]["log2_enrichment_over_neutral"] == pytest.approx(
+        np.array([np.log2(6.0)])
+    )
+    assert contrasts["neutral"]["log2_enrichment_over_neutral"] == pytest.approx(
+        np.array([0.0])
+    )
+
+
+def test_category_and_domain_normalizations_reject_invalid_inputs():
+    with pytest.raises(ValueError, match="one entry per vocabulary"):
+        category_probability_statistics([0.5, 0.5], [0.4, 0.6], [0])
+    with pytest.raises(ValueError, match="noise_floor"):
+        domain_write_contrasts({"neutral": 0.0}, noise_floor=0.0)
+
+
+def test_normalized_depth_uses_completed_block_fraction():
+    assert normalized_depth(0, 4) == pytest.approx(0.25)
+    assert normalized_depth(3, 4) == pytest.approx(1.0)
+    selected = select_normalized_depth_layers([0, 1, 2, 3], n_layers=4, lower=0.5, upper=0.85)
+    assert selected.tolist() == [1, 2]
+
+
+def test_normalized_depth_selection_rejects_invalid_layers():
+    with pytest.raises(ValueError, match="must lie"):
+        select_normalized_depth_layers([4], n_layers=4)
 
 
 def test_direction_alignment_recovers_same_and_opposite_directions():

@@ -1,0 +1,14 @@
+# Confirmatory Qwen3-8B panel. Base-rooted edges use the frozen Base Jlens;
+# incremental edges use LL because a Base-fitted transport is not a valid Jlens
+# for an SFT/IT parent. Every job emits four-cell parent-anchored metrics, exact
+# FP32 full-vocabulary category totals, exact top token changes, and an auditable
+# FP32 union-top-50 store for direction analyses.
+q8_base2it_confirm | Qwen/Qwen3-8B-Base | Qwen/Qwen3-8B | --decoder parent --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_math_sft_confirm | Qwen/Qwen3-8B-Base | Kwai-Klear/Klear-Reasoner-8B-SFT | --decoder parent --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_math_rlzero_confirm | Qwen/Qwen3-8B-Base | caiyuchen/DAPO-step-27 | --decoder parent --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_agent_sft_confirm | Qwen/Qwen3-8B-Base | allenai/tmax-sft-8b | --decoder parent --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_code_sft_confirm | Qwen/Qwen3-8B-Base | IIGroup/X-Coder-SFT-Qwen3-8B | --decoder parent --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_math_sft2rl_confirm | Kwai-Klear/Klear-Reasoner-8B-SFT | Kwai-Klear/Klear-Reasoner-8B | --decoder parent --no_J --layers 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_agent_sft2rl_confirm | allenai/tmax-sft-8b | allenai/tmax-8b | --decoder parent --no_J --layers 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_code_sft2rl_confirm | IIGroup/X-Coder-SFT-Qwen3-8B | IIGroup/X-Coder-RL-Qwen3-8B | --decoder parent --no_J --layers 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL
+q8_opd_sft2opd_confirm | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3 | bobbycxy/Qwen3-8B-Base-SFT-step3000-OpenThoughts3-OPD-step200-Qwen3-32B-OpenThoughts3 | --decoder parent --no_J --layers 6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34 --probes data/probes.jsonl --category_stats --store_fp32 --support_k 50 --full_LL

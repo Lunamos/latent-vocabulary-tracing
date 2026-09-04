@@ -20,6 +20,9 @@ from opd_common import math_prompts, SYSTEM_MATH
 from jlens.examples import load_wikitext_prompts
 import transformers
 
+sys.path.insert(0, "/localscratch/zjin350/Documents/jlen/src")
+from latent_vocabulary_tracing.spans import infer_role_spans, validate_role_spans
+
 OUT = os.environ.get("PROBES_OUT", "/localscratch/zjin350/Documents/jlen/zoo/data/probes.jsonl")
 MAX_LEN = 640
 N = int(os.environ.get("N_PER_KIND", 30))
@@ -96,6 +99,21 @@ with open(OUT, "w") as f:
     for i, p in enumerate(probes):
         p["key"] = f"probe{i:03d}"
         p["n_tok"] = min(ntok(p["text"]), MAX_LEN)
+        encoded = tok(
+            p["text"],
+            add_special_tokens=False,
+            truncation=True,
+            max_length=MAX_LEN,
+            return_offsets_mapping=True,
+        )
+        offsets = [tuple(pair) for pair in encoded["offset_mapping"]]
+        role_spans = infer_role_spans(
+            p["text"], kind=p["kind"], prompt_len=p["prompt_len"], offsets=offsets
+        )
+        validate_role_spans(role_spans, n_tokens=len(offsets))
+        p["role_spans"] = {
+            name: [list(span) for span in spans] for name, spans in role_spans.items()
+        }
         f.write(json.dumps(p, ensure_ascii=False) + "\n")
 h = hashlib.sha256(open(OUT, "rb").read()).hexdigest()[:12]
 from collections import Counter

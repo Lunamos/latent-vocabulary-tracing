@@ -41,6 +41,7 @@
 
 # Runtime state and generated research galleries
 /zoo/logs/
+/logs/
 /zoo/figs/
 /opd/logs/
 *.CLAIM

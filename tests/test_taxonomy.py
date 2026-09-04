@@ -1,6 +1,11 @@
 import pytest
 
-from latent_vocabulary_tracing.taxonomy import categorize_functional_token, categorize_token
+from latent_vocabulary_tracing.taxonomy import (
+    categorize_functional_token,
+    categorize_token,
+    categorize_trace_token,
+    is_displayable_trace_token,
+)
 
 
 @pytest.mark.parametrize(
@@ -53,3 +58,47 @@ def test_functional_categories(token, category):
 def test_functional_taxonomy_rejects_non_string():
     with pytest.raises(TypeError):
         categorize_functional_token(None)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("token", "category"),
+    [
+        (" because", "reasoning_process"),
+        (" answer", "answer_commitment"),
+        (" equation", "mathematical_content"),
+        ("\\frac", "symbolic_notation"),
+        (" commands", "tool_action"),
+        ("task_complete", "tool_action"),
+        (" stderr", "execution_feedback"),
+        (" failed", "execution_feedback"),
+        ("def", "code_content"),
+        ("\n\n", "presentation"),
+        (" the", "general_language"),
+        ("数学", "other"),
+    ],
+)
+def test_trace_categories_cover_math_agent_and_code(token, category):
+    assert categorize_trace_token(token) == category
+
+
+def test_trace_taxonomy_rejects_non_string():
+    with pytest.raises(TypeError):
+        categorize_trace_token(None)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("token", "displayable"),
+    [
+        (" because", True),
+        ("\\frac", True),
+        (" stderr", True),
+        (" 42", True),
+        ("graph", False),
+        ("oret", False),
+        ("\x0c", False),
+        ("<|endoftext|>", False),
+        ("\n\n", False),
+    ],
+)
+def test_displayable_trace_tokens_use_a_frozen_conservative_rule(token, displayable):
+    assert is_displayable_trace_token(token) is displayable

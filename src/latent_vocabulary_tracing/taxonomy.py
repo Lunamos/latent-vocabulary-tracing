@@ -37,6 +37,22 @@ FUNCTIONAL_CATEGORIES = (
     "other",
 )
 
+# Confirmatory trace categories extend the mathematics-oriented pilot taxonomy
+# with agent/tool and code roles.  Keep ``FUNCTIONAL_CATEGORIES`` stable so the
+# existing 1.7B appendix analysis remains reproducible.
+TRACE_CATEGORIES = (
+    "reasoning_process",
+    "answer_commitment",
+    "mathematical_content",
+    "symbolic_notation",
+    "tool_action",
+    "execution_feedback",
+    "code_content",
+    "presentation",
+    "general_language",
+    "other",
+)
+
 DISCOURSE = set(
     """wait alternatively so therefore thus hmm okay ok but first second next then now
     let lets let's actually however since because hence verify check recall note suppose
@@ -211,6 +227,61 @@ _SYMBOLIC_WORDS = {
     "times",
 }
 _PRESENTATION_WORDS = {"latex"}
+_TOOL_ACTION = {
+    "analysis",
+    "bash",
+    "call",
+    "calls",
+    "cd",
+    "command",
+    "commands",
+    "curl",
+    "duration",
+    "execute",
+    "find",
+    "git",
+    "grep",
+    "inspect",
+    "keystrokes",
+    "ls",
+    "mkdir",
+    "path",
+    "pip",
+    "plan",
+    "python",
+    "run",
+    "search",
+    "shell",
+    "sudo",
+    "task_complete",
+    "terminal",
+    "tool",
+    "tools",
+    "wget",
+    "workspace",
+}
+_EXECUTION_FEEDBACK = {
+    "complete",
+    "completed",
+    "denied",
+    "error",
+    "errors",
+    "exception",
+    "exit",
+    "failed",
+    "failure",
+    "missing",
+    "observation",
+    "output",
+    "permission",
+    "retry",
+    "status",
+    "stderr",
+    "stdout",
+    "success",
+    "traceback",
+    "warning",
+}
 _SYMBOLIC = re.compile(
     r"^\s*(?:[-+]?\d[\d,.]*|[=+\-*/^≤≥≠±×÷∑∏∫√∞∂∇∈∉⊂⊆∪∩→⇒⇔∀∃∘·$%]+)\s*$"
 )
@@ -321,3 +392,87 @@ def categorize_functional_token(token: str) -> str:
     if coarse in {"english", "function", "discourse", "latin_piece"}:
         return "general_language"
     return "other"
+
+
+def categorize_trace_token(token: str) -> str:
+    """Assign a token piece to the cross-domain confirmatory taxonomy.
+
+    This classifier remains intentionally surface based: sequence-role masks
+    carry the contextual distinction between tool observations, calls, and
+    continuations.  The extra lexical classes prevent agent protocol and code
+    pieces from disappearing into ``general_language`` or the residual class.
+    """
+
+    if not isinstance(token, str):
+        raise TypeError("token must be a string")
+
+    stripped = token.strip()
+    lowered = stripped.lower().strip(".,:;!?()[]{}<>\"'`*_~")
+    lowered = lowered.replace("’", "'")
+    command_match = _LATEX_COMMAND.match(token)
+    command = command_match.group(1).lower() if command_match else ""
+    lexical = command or lowered.lstrip("\\")
+
+    # Preserve the pilot taxonomy's explicit semantic priorities.
+    if lexical in _ANSWER_COMMITMENT:
+        return "answer_commitment"
+    if lexical in _REASONING_PROCESS:
+        return "reasoning_process"
+    if lexical in _MATHEMATICAL_CONTENT:
+        return "mathematical_content"
+    if lexical in _SYMBOLIC_WORDS or _SYMBOLIC.match(token) or command:
+        return "symbolic_notation"
+    if lexical in _TOOL_ACTION:
+        return "tool_action"
+    if lexical in _EXECUTION_FEEDBACK:
+        return "execution_feedback"
+
+    coarse = categorize_token(token)
+    if coarse == "code":
+        return "code_content"
+    if lexical in _PRESENTATION_WORDS or coarse in {"format", "punct"}:
+        return "presentation"
+    if coarse in {"english", "function", "discourse", "latin_piece"}:
+        return "general_language"
+    return "other"
+
+
+def is_displayable_trace_token(token: str) -> bool:
+    """Return whether a token piece can be labelled legibly in a main figure.
+
+    The filter is deterministic and deliberately conservative.  Unfiltered
+    rankings remain part of every result; this predicate only supplies a
+    companion list that excludes control bytes, special tokens, whitespace,
+    and bare alphabetic continuation fragments.  Named lexicon entries,
+    standalone notation/numbers, code forms, and whitespace-delimited words
+    remain eligible.
+    """
+
+    if not isinstance(token, str):
+        raise TypeError("token must be a string")
+    if not token.strip() or "�" in token or "<|" in token:
+        return False
+    if any(unicodedata.category(char).startswith("C") for char in token):
+        return False
+
+    stripped = token.strip()
+    lowered = stripped.lower().strip(".,:;!?()[]{}<>\"'`*_~").replace("’", "'")
+    command_match = _LATEX_COMMAND.match(token)
+    command = command_match.group(1).lower() if command_match else ""
+    lexical = command or lowered.lstrip("\\")
+    named = (
+        _ANSWER_COMMITMENT
+        | _REASONING_PROCESS
+        | _MATHEMATICAL_CONTENT
+        | _SYMBOLIC_WORDS
+        | _TOOL_ACTION
+        | _EXECUTION_FEEDBACK
+        | CODE_KEYWORDS
+    )
+    if lexical in named or command or _SYMBOLIC.match(token) or _NUMBER.match(token):
+        return True
+    if _CODE_OPERATOR.search(token):
+        return True
+    if token[:1].isspace() and stripped.replace("-", "").isalpha() and len(stripped) >= 2:
+        return True
+    return bool(_CJK.fullmatch(stripped))
