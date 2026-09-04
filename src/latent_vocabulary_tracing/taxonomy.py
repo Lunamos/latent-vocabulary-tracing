@@ -82,6 +82,76 @@ CODE_KEYWORDS = set(
     scanf malloc free string vector array object json math random numpy np pd torch tf""".split()
 )
 
+# A conservative subset for confirmatory cross-domain claims.  The broader
+# ``CODE_KEYWORDS`` set is retained for the legacy structural taxonomy, but it
+# includes ordinary English words such as ``for``, ``with``, ``from``, and
+# ``this``.  Counting those as programming vocabulary would manufacture a code
+# signature in natural-language responses.
+_TRACE_PROGRAMMING_WORDS = {
+    "append",
+    "argv",
+    "assert",
+    "async",
+    "await",
+    "bool",
+    "break",
+    "cin",
+    "class",
+    "const",
+    "continue",
+    "cout",
+    "def",
+    "dict",
+    "elif",
+    "endl",
+    "enum",
+    "enumerate",
+    "except",
+    "false",
+    "float",
+    "global",
+    "goto",
+    "import",
+    "include",
+    "int",
+    "isinstance",
+    "json",
+    "lambda",
+    "malloc",
+    "namespace",
+    "nonlocal",
+    "none",
+    "nullptr",
+    "numpy",
+    "override",
+    "pass",
+    "print",
+    "printf",
+    "private",
+    "protected",
+    "public",
+    "raise",
+    "return",
+    "scanf",
+    "self",
+    "sizeof",
+    "static",
+    "std",
+    "str",
+    "struct",
+    "switch",
+    "template",
+    "torch",
+    "true",
+    "tuple",
+    "typedef",
+    "undefined",
+    "var",
+    "virtual",
+    "void",
+    "yield",
+}
+
 _CJK = re.compile(r"[぀-ヿ㐀-䶿一-鿿가-힯豈-﫿]")
 _OTHER_SCRIPT = re.compile(r"[Ͱ-ϿЀ-ӿ֐-׿؀-ۿऀ-ॿ฀-๿ᄀ-ᇿ]")
 _GREEK = re.compile(r"[Ͱ-Ͽ]")
@@ -94,6 +164,10 @@ _NUMBER = re.compile(r"^\s*[-+]?\d[\d,.]*\s*$")
 _CODE_OPERATOR = re.compile(
     r"(==|!=|<=|>=|\+=|-=|\*=|/=|=>|->|::|&&|\|\||//|/\*|\*/|#!|\(\)|\[\]|"
     r"\{\}|;\s*$|^\s*(#include|#define|import|from)\b)"
+)
+_TRACE_CODE_OPERATOR = re.compile(
+    r"(==|!=|<=|>=|\+=|-=|\*=|/=|=>|->|::|&&|\|\||//|/\*|\*/|#!|\(\)|\[\]|"
+    r"\{\}|;\s*$|^\s*(#include|#define)\b)"
 )
 _FORMAT = re.compile(r"^\s*$|^[\s*#`>|_=\-~]+$|^\s*(\*\*|###|##|#|---|```|\\n)+\s*$")
 _PUNCT = re.compile(
@@ -432,12 +506,32 @@ def categorize_trace_token(token: str) -> str:
     if lexical in _EXECUTION_STATUS:
         return "execution_status_lexicon"
 
-    coarse = categorize_token(token)
-    if coarse == "code":
+    looks_like_code = (
+        _TRACE_CODE_OPERATOR.search(token)
+        or lexical in _TRACE_PROGRAMMING_WORDS
+        or (
+            "_" in stripped
+            and any(char.isalnum() for char in stripped)
+            and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", stripped)
+        )
+        or re.fullmatch(r"[a-z]+[A-Z][A-Za-z0-9]*", stripped)
+        or (
+            len(re.findall(r"[A-Z]", stripped[1:])) >= 2
+            and token[:1].isspace()
+            and re.fullmatch(r"[A-Za-z][A-Za-z0-9]*", stripped)
+        )
+    )
+    if looks_like_code:
         return "programming_lexicon"
+    coarse = categorize_token(token)
     if lexical in _PRESENTATION_WORDS or coarse in {"format", "punct"}:
         return "formatting"
-    if coarse in {"english", "function", "discourse", "latin_piece"}:
+    if _WORD.match(token) or coarse in {
+        "english",
+        "function",
+        "discourse",
+        "latin_piece",
+    }:
         return "general_language"
     return "other"
 
@@ -475,11 +569,11 @@ def is_displayable_trace_token(token: str) -> bool:
         | _SYMBOLIC_WORDS
         | _TOOL_INTERFACE
         | _EXECUTION_STATUS
-        | CODE_KEYWORDS
+        | _TRACE_PROGRAMMING_WORDS
     )
     if lexical in named or command or _SYMBOLIC.match(token) or _NUMBER.match(token):
         return True
-    if _CODE_OPERATOR.search(token):
+    if _TRACE_CODE_OPERATOR.search(token):
         return True
     if token[:1].isspace() and stripped.replace("-", "").isalpha() and len(stripped) >= 2:
         return True

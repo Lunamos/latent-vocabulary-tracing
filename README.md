@@ -31,6 +31,13 @@ class carries twice the share of probability movement expected from the
 class's mean parent/descendant probability mass. Raw turnover shares remain
 part of the result so enrichment cannot hide a negligible edit.
 
+The confirmatory taxonomy is deliberately conservative. Ambiguous formal
+words such as `function`, `set`, and `vector` are not forced into mathematics
+or programming, and ordinary English words that also happen to be language
+keywords—such as `for`, `with`, `from`, `this`, and `new`—remain general
+language. This prevents the vocabulary definition itself from manufacturing a
+code signature.
+
 ## Install
 
 ```bash
